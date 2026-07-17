@@ -1,0 +1,1371 @@
+/* ============================================
+   lwriter — Styles
+   ============================================ */
+
+/* ---------- Fonts (iA Writer Quattro, SIL OFL — see fonts/LICENSE.md) ---------- */
+@font-face {
+  font-family: "iA Writer Quattro S";
+  src: url("fonts/iAWriterQuattroS-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "iA Writer Quattro S";
+  src: url("fonts/iAWriterQuattroS-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "iA Writer Quattro S";
+  src: url("fonts/iAWriterQuattroS-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "iA Writer Quattro S";
+  src: url("fonts/iAWriterQuattroS-BoldItalic.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* JetBrains Mono, SIL OFL — see fonts/JetBrainsMono-OFL.txt */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-BoldItalic.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---------- CSS Custom Properties ---------- */
+:root {
+  /* Light theme (default) — write0 palette */
+  --bg: #fafafa;
+  --hover: rgba(0, 0, 0, 0.05);
+  --border: #e5e5e5;
+  --text: #262626;
+  --text-secondary: #737373;
+  --text-muted: #a3a3a3;
+  --accent: #2563eb;
+  --selection-bg: rgba(191, 219, 254, 0.55);
+  --code-bg: rgba(0, 0, 0, 0.05);
+  --caret: #2563eb;
+  --close-hover: #e81123;
+  --panel-bg: #ffffff;
+  --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+
+  /* Editor typography (default: JetBrains Mono; switchable via the Aa menu) */
+  --editor-font: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  --ui-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --editor-size: 18px;
+  --editor-lh: 1.75;
+  --editor-column: 48rem;
+  --editor-top: 4rem;
+
+  /* Chrome heights */
+  --titlebar-h: 40px;
+  --statusbar-h: 32px;
+
+  /* Preview typography */
+  --preview-font: Georgia, "Times New Roman", serif;
+  --preview-size: 18px;
+
+  color-scheme: light;
+}
+
+:root.dark {
+  --bg: #191919;
+  --hover: rgba(255, 255, 255, 0.06);
+  --border: #2a2a2a;
+  --text: #e5e5e5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #6f6f6f;
+  --accent: #60a5fa;
+  --selection-bg: rgba(30, 64, 175, 0.5);
+  --code-bg: rgba(255, 255, 255, 0.07);
+  --caret: #60a5fa;
+  --panel-bg: #171717;
+  --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+/* ---------- Reset & Base ---------- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ---------- Title Bar ----------
+   Seamless with the page: no border, no fill. Filename dead-center,
+   Windows caption buttons on the right. Fades away while writing. */
+#titlebar {
+  height: var(--titlebar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  position: relative;
+  z-index: 10;
+}
+
+#titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding: 0 6px;
+}
+
+/* Small tool buttons (sidebar toggle, font picker) */
+.tool-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tool-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tool-btn.active {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* ---------- Font picker menu ---------- */
+#font-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  animation: fadeInUp 0.15s ease-out;
+}
+
+.menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  text-align: left;
+  cursor: default;
+}
+
+.menu button:hover {
+  background: var(--hover);
+}
+
+.menu button .check {
+  color: var(--accent);
+  font-size: 11px;
+  visibility: hidden;
+}
+
+.menu button.selected .check {
+  visibility: visible;
+}
+
+/* ---------- Context menu ---------- */
+.context-menu {
+  position: fixed;
+  top: auto;
+  left: auto;
+  z-index: 200;
+  min-width: 170px;
+}
+
+.menu .menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.menu button .hint {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: 16px;
+}
+
+.menu button.danger {
+  color: var(--close-hover);
+}
+
+.menu button.danger:hover {
+  background: rgba(232, 17, 35, 0.1);
+}
+
+/* ---------- Inline rename ---------- */
+.rename-input {
+  width: 100%;
+  border: none;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  background: var(--hover);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 500;
+  outline: 1px solid var(--accent);
+}
+
+/* ---------- Find & replace ---------- */
+#find-bar {
+  position: fixed;
+  top: calc(var(--titlebar-h) + 10px);
+  right: 18px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  animation: fadeInUp 0.15s ease-out;
+}
+
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#find-bar input {
+  width: 190px;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--hover);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  outline: none;
+}
+
+#find-bar input::placeholder {
+  color: var(--text-muted);
+}
+
+#find-bar input:focus {
+  outline: 1px solid var(--accent);
+}
+
+#find-count {
+  min-width: 52px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.find-btn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.find-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.find-btn.active {
+  background: var(--hover);
+  color: var(--accent);
+}
+
+#find-toggle-replace .chevron {
+  transition: transform 0.15s ease;
+}
+
+#find-bar.replace-open #find-toggle-replace .chevron {
+  transform: rotate(90deg);
+}
+
+.find-btn-text {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.find-btn-text:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* Match highlights: a third metrics-identical layer under the textarea.
+   Text is invisible; only the mark backgrounds show through. */
+#find-layer {
+  color: transparent;
+  pointer-events: none;
+}
+
+#find-layer mark {
+  color: transparent;
+  background: rgba(250, 204, 21, 0.3);
+  border-radius: 2px;
+}
+
+#find-layer mark.current {
+  background: rgba(249, 115, 22, 0.45);
+}
+
+:root.dark #find-layer mark {
+  background: rgba(202, 138, 4, 0.4);
+}
+
+:root.dark #find-layer mark.current {
+  background: rgba(234, 88, 12, 0.55);
+}
+
+/* ---------- Toast ---------- */
+#toast {
+  position: fixed;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  z-index: 300;
+  padding: 7px 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  font-size: 12.5px;
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#titlebar-filename {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  pointer-events: none;
+  max-width: 50%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#unsaved-label {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+#unsaved-label.hidden {
+  display: none;
+}
+
+/* Window controls — standard Windows caption-button proportions */
+#titlebar-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+#titlebar-controls button {
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+#titlebar-controls button svg {
+  display: block;
+}
+
+#titlebar-controls button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+#btn-close:hover {
+  background: var(--close-hover);
+  color: #fff;
+}
+
+/* Maximize button swaps its glyph via .is-maximized on <body> */
+#btn-maximize .icon-restore { display: none; }
+body.is-maximized #btn-maximize .icon-maximize { display: none; }
+body.is-maximized #btn-maximize .icon-restore { display: block; }
+
+/* ---------- Main row: sidebar + editor ---------- */
+#main-row {
+  display: flex;
+  height: calc(100vh - var(--titlebar-h) - var(--statusbar-h));
+}
+
+/* ---------- Sidebar (notes library) ---------- */
+#sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  transition: margin-left 0.25s ease, opacity 0.25s ease;
+}
+
+#sidebar.collapsed {
+  margin-left: -260px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sidebar-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sidebar-tool {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-tool:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* ---------- Linked folders (Obsidian vaults etc.) ---------- */
+.folder-section {
+  margin-top: 8px;
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: default;
+  transition: background 0.15s ease;
+}
+
+.folder-header:hover {
+  background: var(--hover);
+  color: var(--text-secondary);
+}
+
+.folder-header .chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.folder-section.collapsed-section .chevron {
+  transform: rotate(-90deg);
+}
+
+.folder-header .folder-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-header .folder-count {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.folder-unlink {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.folder-header:hover .folder-unlink {
+  opacity: 1;
+}
+
+.folder-unlink:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.folder-section.collapsed-section .folder-items {
+  display: none;
+}
+
+#notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 12px;
+  scrollbar-width: none;
+}
+#notes-list::-webkit-scrollbar {
+  display: none;
+}
+
+.note-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 9px 10px;
+  margin-bottom: 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  transition: background 0.15s ease;
+}
+
+.note-item:hover {
+  background: var(--hover);
+}
+
+.note-item.current {
+  background: var(--hover);
+}
+
+.note-name {
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-date {
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.notes-empty {
+  padding: 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ---------- Settings modal ---------- */
+#settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+:root.dark #settings-overlay {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+#settings-modal {
+  width: min(460px, 100%);
+  max-height: min(640px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  animation: fadeInUp 0.2s ease-out;
+}
+
+#settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+#btn-settings-close {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#btn-settings-close:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+#settings-body {
+  overflow-y: auto;
+  padding: 0 18px 16px;
+  scrollbar-width: none;
+}
+#settings-body::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-section {
+  padding: 10px 0 4px;
+}
+
+.settings-section + .settings-section {
+  border-top: 1px solid var(--border);
+}
+
+.settings-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 4px 0 6px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+}
+
+.settings-row.stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* ---------- Advanced disclosure ---------- */
+.advanced-group {
+  margin-top: 6px;
+}
+
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+}
+
+.advanced-toggle:hover {
+  color: var(--text);
+}
+
+.advanced-toggle .chevron {
+  transition: transform 0.15s ease;
+}
+
+.advanced-group:not(.collapsed) .advanced-toggle .chevron {
+  transform: rotate(90deg);
+}
+
+.advanced-group.collapsed .advanced-body {
+  display: none;
+}
+
+.advanced-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding: 4px 0 2px;
+}
+
+.custom-font-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-font-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.custom-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-input input {
+  width: 68px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: var(--hover);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  text-align: right;
+  outline: none;
+}
+
+.custom-input input:focus {
+  outline: 1px solid var(--accent);
+}
+
+/* Hide number-spinner arrows for a cleaner look */
+.custom-input input::-webkit-outer-spin-button,
+.custom-input input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.custom-unit {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.settings-row.stack .seg {
+  display: flex;
+}
+
+.settings-row.stack .seg button {
+  flex: 1;
+}
+
+.settings-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settings-label kbd {
+  margin-left: 4px;
+}
+
+kbd {
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+/* Segmented control */
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 2px;
+  background: var(--hover);
+  border-radius: 8px;
+}
+
+.seg button {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.seg button:hover {
+  color: var(--text);
+}
+
+.seg button.selected {
+  background: var(--panel-bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Stepper */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--hover);
+  border-radius: 8px;
+}
+
+.stepper button {
+  width: 26px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: default;
+}
+
+.stepper button:hover {
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+.stepper span {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 10px;
+  background: var(--border);
+  cursor: default;
+  transition: background 0.2s ease;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--panel-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.toggle.on {
+  background: var(--accent);
+}
+
+.toggle.on::after {
+  transform: translateX(16px);
+}
+
+/* Small text button */
+.settings-btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.settings-btn:hover {
+  background: var(--hover);
+}
+
+/* Shortcuts grid */
+#shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 16px;
+  padding: 2px 0 6px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+#shortcuts-grid span:nth-child(even) {
+  text-align: right;
+}
+
+/* ---------- Editor Area ---------- */
+#editor-area {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scrollbar-width: none;
+}
+#editor-area::-webkit-scrollbar {
+  display: none;
+}
+
+#editor-wrapper {
+  position: relative;
+  min-height: 100%;
+  padding-top: var(--editor-top);
+  padding-bottom: 50vh; /* runway: lets the last line scroll up to center */
+}
+
+/* Typewriter mode: bump the top offset to 50vh so there's runway ABOVE the
+   text too. Without this, lines near the top of a document can't reach the
+   vertical center (scrollTop clamps at 0) and the mode looks like it does
+   nothing. All four editor layers key off --editor-top, so they move together
+   and stay aligned. */
+:root.typewriter-mode {
+  --editor-top: 50vh;
+}
+
+/* ---------- Shared metrics for the layered editor ----------
+   The backdrop (styled markdown), the textarea (transparent text +
+   native caret) and the caret-measuring mirror must render text with
+   IDENTICAL geometry or the layers drift. Never add anything here
+   that changes glyph advance widths. */
+#backdrop,
+#editor,
+#caret-mirror,
+#find-layer {
+  position: absolute;
+  top: var(--editor-top);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--editor-column);
+  padding: 0 1.5rem;
+  font-family: var(--editor-font);
+  font-size: var(--editor-size);
+  line-height: var(--editor-lh);
+  font-kerning: none;
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-height: 100%;
+}
+
+#backdrop {
+  color: var(--text);
+  pointer-events: none;
+}
+
+#editor {
+  color: transparent;
+  caret-color: var(--caret);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+}
+
+#caret-mirror {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#editor::placeholder {
+  color: var(--text-muted);
+}
+
+#editor::selection {
+  color: transparent;
+  background: var(--selection-bg);
+}
+
+/* ---------- Status Bar ---------- */
+#statusbar {
+  height: var(--statusbar-h);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  position: relative;
+  z-index: 10;
+}
+
+.status-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-mode {
+  color: var(--text-muted);
+}
+
+.status-mode.hidden {
+  display: none;
+}
+
+/* ---------- Chrome hide/show ---------- */
+.chrome {
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+.chrome.hidden-chrome {
+  opacity: 0;
+  pointer-events: none;
+  transition-delay: 0.15s;
+}
+
+/* ---------- Focus mode ---------- */
+.focus-mode .md-line {
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+}
+
+.focus-mode .focus-active {
+  opacity: 1;
+}
+
+/* ---------- Markdown syntax highlight (iA style) ----------
+   Headings are bold in the text color — not tinted. Syntax characters
+   recede to the muted gray. Nothing here may alter glyph widths. */
+.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6 {
+  font-weight: 700;
+}
+
+.md-bold {
+  font-weight: 700;
+}
+
+.md-italic {
+  font-style: italic;
+}
+
+.md-code {
+  background: var(--code-bg);
+  border-radius: 3px;
+}
+
+.md-quote {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.md-strike {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.md-list-marker {
+  color: var(--accent);
+}
+
+.md-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.md-syntax {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+/* Proportional editor fonts (Georgia, Times): bold/italic glyphs are wider
+   than regular ones, which would drift the backdrop off the caret. Styling
+   falls back to color-only. */
+:root.proportional-font .md-h1,
+:root.proportional-font .md-h2,
+:root.proportional-font .md-h3,
+:root.proportional-font .md-h4,
+:root.proportional-font .md-h5,
+:root.proportional-font .md-h6 {
+  font-weight: 400;
+  color: var(--accent);
+}
+
+:root.proportional-font .md-bold {
+  font-weight: 400;
+  color: var(--accent);
+}
+
+:root.proportional-font .md-italic,
+:root.proportional-font .md-quote {
+  font-style: normal;
+}
+
+:root.proportional-font .md-syntax {
+  color: var(--text-muted);
+}
+
+/* ---------- Preview ---------- */
+#preview {
+  padding: 3rem 1.5rem;
+  margin: 0 auto;
+  max-width: 65ch;
+  font-family: var(--preview-font);
+  font-size: var(--preview-size);
+  line-height: 1.75;
+  color: var(--text);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#preview.hidden {
+  display: none;
+}
+
+#preview h1, #preview h2, #preview h3, #preview h4, #preview h5, #preview h6 {
+  font-family: var(--ui-font);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+#preview h1 { font-size: 1.9em; margin: 2.5rem 0 2rem; }
+#preview h2 { font-size: 1.4em; margin: 1.5rem 0 1.4rem; }
+#preview h3 { font-size: 1.15em; margin: 1rem 0 1rem; }
+#preview h4, #preview h5, #preview h6 { font-size: 1em; margin: 1rem 0 0.75rem; }
+
+#preview > :first-child {
+  margin-top: 0;
+}
+
+#preview p {
+  margin: 0.85em 0;
+}
+
+#preview code {
+  font-family: var(--editor-font);
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+}
+
+#preview pre {
+  background: var(--code-bg);
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1.25em 0;
+}
+
+#preview pre code {
+  background: none;
+  padding: 0;
+}
+
+#preview blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  margin: 1.25em 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+#preview a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+#preview ul, #preview ol {
+  padding-left: 1.5em;
+  margin: 1em 0;
+}
+
+#preview li {
+  margin: 0.4em 0;
+}
+
+#preview hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5em auto;
+  width: 8rem;
+}
+
+#preview img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+/* ---------- Animations ---------- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* ---------- Hidden utility ---------- */
+.hidden {
+  display: none !important;
+}

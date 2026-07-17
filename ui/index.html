@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>lwriter</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Custom title bar (frameless window) -->
+  <div id="titlebar" class="chrome">
+    <div id="titlebar-left">
+      <button id="btn-sidebar" tabindex="-1" class="tool-btn" title="Notes (Ctrl+D)" aria-label="Toggle notes sidebar">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M6 2.5v11" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+      </button>
+      <div id="font-picker">
+        <button id="btn-font" tabindex="-1" class="tool-btn" title="Editor font" aria-label="Editor font">
+          <span aria-hidden="true">Aa</span>
+        </button>
+        <div id="font-menu" class="menu hidden" role="menu"></div>
+      </div>
+    </div>
+    <span id="titlebar-filename">
+      <span id="filename-text">Untitled</span>
+      <span id="unsaved-label" class="hidden">— edited</span>
+    </span>
+    <div id="titlebar-controls">
+      <button id="btn-minimize" tabindex="-1" title="Minimize" aria-label="Minimize">
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M0 5h10" stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </button>
+      <button id="btn-maximize" tabindex="-1" title="Maximize" aria-label="Maximize">
+        <svg class="icon-maximize" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/>
+        </svg>
+        <svg class="icon-restore" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M2.5 2.5V0.5h7v7h-2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="0.5" y="2.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </button>
+      <button id="btn-close" tabindex="-1" title="Close" aria-label="Close">
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main row: sidebar + editor -->
+  <div id="main-row">
+    <aside id="sidebar" class="collapsed" aria-label="Notes">
+      <div id="sidebar-header">
+        <span>notes</span>
+        <span class="sidebar-tools">
+          <button id="btn-link-folder" tabindex="-1" class="sidebar-tool" title="Link a folder (e.g. an Obsidian vault)" aria-label="Link a folder">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M1.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10.5a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M8 7.5v3M6.5 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button id="btn-settings" tabindex="-1" class="sidebar-tool" title="Settings" aria-label="Settings">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </span>
+      </div>
+      <div id="notes-list"></div>
+    </aside>
+
+    <div id="editor-area">
+      <div id="editor-wrapper">
+        <div id="backdrop" aria-hidden="true"></div>
+        <div id="find-layer" aria-hidden="true"></div>
+        <textarea
+          id="editor"
+          placeholder="start writing"
+          spellcheck="true"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+        ></textarea>
+      </div>
+
+      <!-- Preview (toggled via Ctrl+E) -->
+      <div id="preview" class="hidden"></div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-overlay" class="hidden">
+    <div id="settings-modal" role="dialog" aria-label="Settings">
+      <div id="settings-header">
+        <span>settings</span>
+        <button id="btn-settings-close" tabindex="-1" aria-label="Close settings">
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1"/>
+          </svg>
+        </button>
+      </div>
+      <div id="settings-body">
+
+        <div class="settings-section">
+          <div class="settings-title">appearance</div>
+          <div class="settings-row">
+            <span class="settings-label">theme</span>
+            <div class="seg" id="set-theme">
+              <button tabindex="-1" data-v="system">auto</button>
+              <button tabindex="-1" data-v="light">light</button>
+              <button tabindex="-1" data-v="dark">dark</button>
+            </div>
+          </div>
+          <div class="settings-row stack">
+            <span class="settings-label">editor font</span>
+            <div class="seg" id="set-font"></div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">font size</span>
+            <div class="stepper" id="set-size">
+              <button tabindex="-1" data-d="-1" aria-label="Smaller">−</button>
+              <span id="set-size-value">18px</span>
+              <button tabindex="-1" data-d="1" aria-label="Larger">+</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">line width</span>
+            <div class="seg" id="set-width">
+              <button tabindex="-1" data-v="narrow">narrow</button>
+              <button tabindex="-1" data-v="normal">normal</button>
+              <button tabindex="-1" data-v="wide">wide</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">line spacing</span>
+            <div class="seg" id="set-spacing">
+              <button tabindex="-1" data-v="compact">compact</button>
+              <button tabindex="-1" data-v="normal">normal</button>
+              <button tabindex="-1" data-v="relaxed">relaxed</button>
+            </div>
+          </div>
+
+          <div class="advanced-group collapsed" id="advanced-group">
+            <button class="advanced-toggle" id="advanced-toggle" tabindex="-1">
+              <svg class="chevron" width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>advanced</span>
+            </button>
+            <div class="advanced-body">
+              <div class="settings-row">
+                <span class="settings-label">custom font</span>
+                <div class="custom-font-controls">
+                  <span id="custom-font-name" class="custom-font-name"></span>
+                  <button id="pick-font" tabindex="-1" class="settings-btn">choose file…</button>
+                  <button id="clear-font" tabindex="-1" class="find-btn hidden" title="Remove custom font" aria-label="Remove custom font">
+                    <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
+                      <path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1.2"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <span class="settings-label">line spacing</span>
+                <div class="custom-input">
+                  <input id="custom-lh" type="number" step="0.05" min="1" max="3" inputmode="decimal" placeholder="1.75">
+                </div>
+              </div>
+              <div class="settings-row">
+                <span class="settings-label">column width</span>
+                <div class="custom-input">
+                  <input id="custom-width" type="number" step="1" min="24" max="120" inputmode="numeric" placeholder="48">
+                  <span class="custom-unit">rem</span>
+                </div>
+              </div>
+              <div class="advanced-hint">custom values override the presets above. leave blank to use a preset.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">writing</div>
+          <div class="settings-row">
+            <span class="settings-label">typewriter mode <kbd>Ctrl+T</kbd></span>
+            <button tabindex="-1" class="toggle" id="set-typewriter" role="switch"></button>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">focus mode <kbd>Ctrl+Shift+F</kbd></span>
+            <button tabindex="-1" class="toggle" id="set-focus" role="switch"></button>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">spellcheck</span>
+            <button tabindex="-1" class="toggle" id="set-spellcheck" role="switch"></button>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">hide bars while typing</span>
+            <button tabindex="-1" class="toggle" id="set-autohide" role="switch"></button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">notes</div>
+          <div class="settings-row">
+            <span class="settings-label">notes are stored in Documents\lwriter</span>
+            <button tabindex="-1" class="settings-btn" id="btn-open-notes-dir">open folder</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">shortcuts</div>
+          <div id="shortcuts-grid">
+            <span>new / open</span><span><kbd>Ctrl+N</kbd> <kbd>Ctrl+O</kbd></span>
+            <span>save / save as</span><span><kbd>Ctrl+S</kbd> <kbd>Ctrl+Shift+S</kbd></span>
+            <span>close</span><span><kbd>Ctrl+W</kbd></span>
+            <span>preview</span><span><kbd>Ctrl+E</kbd></span>
+            <span>export to html</span><span><kbd>Ctrl+Shift+E</kbd></span>
+            <span>bold / italic</span><span><kbd>Ctrl+B</kbd> <kbd>Ctrl+I</kbd></span>
+            <span>insert link</span><span><kbd>Ctrl+K</kbd></span>
+            <span>find / replace</span><span><kbd>Ctrl+F</kbd> <kbd>Ctrl+H</kbd></span>
+            <span>notes sidebar</span><span><kbd>Ctrl+D</kbd></span>
+            <span>settings</span><span><kbd>Ctrl+,</kbd></span>
+            <span>cycle theme</span><span><kbd>Ctrl+Shift+L</kbd></span>
+            <span>font size</span><span><kbd>Ctrl+=</kbd> <kbd>Ctrl+-</kbd> <kbd>Ctrl+0</kbd></span>
+            <span>indent / outdent</span><span><kbd>Tab</kbd> <kbd>Shift+Tab</kbd></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="statusbar" class="chrome">
+    <span id="word-count">0 words</span>
+    <span id="char-count">· 0 chars</span>
+    <span id="reading-time">· 0m</span>
+    <span class="status-right">
+      <span id="mode-label" class="status-mode hidden"></span>
+      <span id="theme-label"></span>
+    </span>
+  </div>
+
+  <!-- Find & replace bar -->
+  <div id="find-bar" class="hidden" role="search">
+    <div class="find-row">
+      <button id="find-toggle-replace" tabindex="-1" class="find-btn" title="Toggle replace (Ctrl+H)" aria-label="Toggle replace">
+        <svg class="chevron" width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <input id="find-input" type="text" placeholder="find" spellcheck="false" autocomplete="off">
+      <span id="find-count"></span>
+      <button id="find-case" tabindex="-1" class="find-btn" title="Match case" aria-label="Match case">Aa</button>
+      <button id="find-prev" tabindex="-1" class="find-btn" title="Previous (Shift+Enter)" aria-label="Previous match">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M2 6.5l3-3 3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button id="find-next" tabindex="-1" class="find-btn" title="Next (Enter)" aria-label="Next match">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button id="find-close" tabindex="-1" class="find-btn" title="Close (Esc)" aria-label="Close find">
+        <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="find-row hidden" id="replace-row">
+      <input id="replace-input" type="text" placeholder="replace with" spellcheck="false" autocomplete="off">
+      <button id="replace-one" tabindex="-1" class="find-btn-text">replace</button>
+      <button id="replace-all" tabindex="-1" class="find-btn-text">all</button>
+    </div>
+  </div>
+
+  <!-- Toast (transient feedback) -->
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="markdown.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
