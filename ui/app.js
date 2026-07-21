@@ -12,6 +12,21 @@
 const Tauri = window.__TAURI_INTERNALS__;
 const invoke = Tauri ? (cmd, args) => Tauri.invoke(cmd, args) : () => Promise.resolve(null);
 
+/* ---------- Platform ----------
+   The mac class swaps the custom caption buttons for native traffic lights
+   (see styles.css); keyLabel turns "Ctrl+Shift+S" into "⇧⌘S" for every
+   user-facing shortcut string. */
+const IS_MAC = navigator.userAgent.includes('Mac');
+if (IS_MAC) document.documentElement.classList.add('mac');
+
+const NOTES_DIR_LABEL = IS_MAC ? 'Documents/lwriter' : 'Documents\\lwriter';
+const REVEAL_LABEL = IS_MAC ? 'show in finder' : 'show in explorer';
+
+function keyLabel(s) {
+  if (!IS_MAC) return s;
+  return s.replace(/Ctrl\+Shift\+/g, '⇧⌘').replace(/Ctrl\+/g, '⌘');
+}
+
 /* ---------- DOM refs ---------- */
 const $ = (sel) => document.querySelector(sel);
 
@@ -86,8 +101,26 @@ const state = {
 const EDITOR_WIDTHS = { narrow: '40rem', normal: '48rem', wide: '58rem' };
 const LINE_SPACINGS = { compact: '1.6', normal: '1.75', relaxed: '1.95' };
 
+/* ---------- Platform text ----------
+   The static HTML is written with Windows wording; on a mac the shortcut
+   hints become ⌘-style and the notes path uses forward slashes. Replace on
+   mac is ⌥⌘F — ⌘H belongs to the system Hide command. */
+function applyPlatformText() {
+  $('#notes-path-label').textContent = `notes are stored in ${NOTES_DIR_LABEL}`;
+  if (!IS_MAC) return;
+  $('#kbd-replace').textContent = '⌥⌘F';
+  $('#find-toggle-replace').title = 'Toggle replace (⌥⌘F)';
+  document.querySelectorAll('kbd').forEach((k) => {
+    k.textContent = keyLabel(k.textContent);
+  });
+  document.querySelectorAll('[title*="Ctrl"]').forEach((el) => {
+    el.title = keyLabel(el.title);
+  });
+}
+
 /* ---------- Init ---------- */
 function init() {
+  applyPlatformText();
   loadSettings();
   applyTheme();
   applyFontSize();
@@ -497,7 +530,7 @@ function makeUnsavedItem() {
   name.textContent = state.fileName;
   const date = document.createElement('span');
   date.className = 'note-date';
-  date.textContent = 'unsaved — Ctrl+S to keep it';
+  date.textContent = `unsaved — ${keyLabel('Ctrl+S')} to keep it`;
   item.append(name, date);
   return item;
 }
@@ -523,7 +556,7 @@ async function refreshNotes() {
   if (state.notesRoot) archiveRoots.push({ name: 'notes', path: state.notesRoot });
   for (const f of state.linkedFolders) archiveRoots.push({ name: f.name, path: f.path });
   const archiveResults = await Promise.all(archiveRoots.map(r =>
-    invoke('list_folder_notes', { path: r.path + '\\archive' }).catch(() => null)
+    invoke('list_folder_notes', { path: r.path + '/archive' }).catch(() => null)
   ));
   const archived = [];
   archiveRoots.forEach((r, i) => {
@@ -542,12 +575,12 @@ async function refreshNotes() {
   // otherwise it's pinned to the top of the list.
   let unsavedHome = null; // { folder, subdir } within a linked folder
   if (!state.filePath && state.newNoteDir) {
+    // Normalize separators so the comparison works on both platforms
+    const dir = state.newNoteDir.replace(/\\/g, '/');
     for (const f of state.linkedFolders) {
-      if (state.newNoteDir === f.path || state.newNoteDir.startsWith(f.path + '\\')) {
-        const rel = state.newNoteDir === f.path
-          ? ''
-          : state.newNoteDir.slice(f.path.length + 1).replace(/\\/g, '/');
-        unsavedHome = { folder: f, subdir: rel };
+      const base = f.path.replace(/\\/g, '/');
+      if (dir === base || dir.startsWith(base + '/')) {
+        unsavedHome = { folder: f, subdir: dir === base ? '' : dir.slice(base.length + 1) };
         break;
       }
     }
@@ -560,7 +593,7 @@ async function refreshNotes() {
   if (notes.length === 0 && state.filePath && state.linkedFolders.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'notes-empty';
-    empty.textContent = 'no notes yet — saved files land in Documents\\lwriter';
+    empty.textContent = `no notes yet — saved files land in ${NOTES_DIR_LABEL}`;
     dom.notesList.appendChild(empty);
   }
 
@@ -727,7 +760,8 @@ function renderNoteTree(container, node, folder, subpath, depth, revealPath) {
     header.tabIndex = -1;
     header.className = 'subdir-header';
     header.style.paddingLeft = indent;
-    header._subdir = { key, path: folder.path + '\\' + childPath.replace(/\//g, '\\') };
+    // Rust's std accepts '/' joins on Windows too — no separator branching
+    header._subdir = { key, path: folder.path + '/' + childPath };
     header.innerHTML =
       '<svg class="chevron" width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">' +
       '<path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -871,11 +905,11 @@ function noteContextItems(note, noteEl) {
   const items = [
     { label: 'open', action: () => openNotePath(note.path) },
     { label: 'rename', action: () => startRename(note, noteEl) },
-    { label: 'show in explorer', action: () => invoke('show_in_explorer', { path: note.path }).catch(() => {}) },
+    { label: REVEAL_LABEL, action: () => invoke('show_in_explorer', { path: note.path }).catch(() => {}) },
     '-',
     isArchived
       ? { label: 'unarchive', action: () => moveNoteTo(note, note._archiveRoot, 'unarchived') }
-      : { label: 'archive', action: () => moveNoteTo(note, root + '\\archive', 'archived') },
+      : { label: 'archive', action: () => moveNoteTo(note, root + '/archive', 'archived') },
   ];
   const destinations = [];
   if (state.notesRoot) destinations.push({ name: 'notes', path: state.notesRoot });
@@ -901,7 +935,7 @@ function folderContextItems(folder) {
       },
     },
     { label: 'new note here', action: () => newFile(folder.path) },
-    { label: 'show in explorer', action: () => invoke('show_in_explorer', { path: folder.path }).catch(() => {}) },
+    { label: REVEAL_LABEL, action: () => invoke('show_in_explorer', { path: folder.path }).catch(() => {}) },
     '-',
     {
       label: 'unlink folder',
@@ -929,15 +963,15 @@ function subdirContextItems(sub) {
       },
     },
     { label: 'new note here', action: () => newFile(sub.path) },
-    { label: 'show in explorer', action: () => invoke('show_in_explorer', { path: sub.path }).catch(() => {}) },
+    { label: REVEAL_LABEL, action: () => invoke('show_in_explorer', { path: sub.path }).catch(() => {}) },
   ];
 }
 
 function generalContextItems() {
   return [
-    { label: 'new note', hint: 'Ctrl+N', action: newFile },
+    { label: 'new note', hint: keyLabel('Ctrl+N'), action: newFile },
     { label: 'link a folder…', action: linkFolder },
-    { label: 'export to html', hint: 'Ctrl+Shift+E', action: exportHtml },
+    { label: 'export to html', hint: keyLabel('Ctrl+Shift+E'), action: exportHtml },
     '-',
     { label: 'open notes folder', action: () => invoke('open_notes_dir').catch(() => {}) },
     { label: 'refresh', action: refreshNotes },
@@ -957,7 +991,7 @@ async function deleteNote(note) {
       updateSaveIndicator();
       saveSession();
     }
-    toast('moved to recycle bin');
+    toast(IS_MAC ? 'moved to trash' : 'moved to recycle bin');
   } catch (e) {
     toast(String(e));
   }
@@ -1409,6 +1443,18 @@ function setupWindowControls() {
   dom.btnMin.addEventListener('click', () => invoke('minimize_window'));
   dom.btnMax.addEventListener('click', () => invoke('toggle_maximize_window'));
   dom.btnClose.addEventListener('click', () => handleClose());
+
+  // Native close paths — the macOS traffic-light ✕ and the Cmd+W menu item
+  // (Alt+F4 on Windows likewise) — go through the same unsaved-changes flow
+  // as the custom ✕ button. Registering this listener makes Tauri hold the
+  // close; handleClose() finishes it via close_window (which destroys).
+  try {
+    const win = window.__TAURI__?.window?.getCurrentWindow?.();
+    win?.onCloseRequested?.((event) => {
+      event.preventDefault();
+      handleClose();
+    });
+  } catch (_) { /* window API unavailable — custom ✕ still works */ }
 
   // The whole titlebar drags the window; double-click toggles maximize
   dom.titlebar.addEventListener('mousedown', (e) => {
@@ -1881,7 +1927,7 @@ async function hydrateImages(container) {
     let rel = raw;
     try { rel = decodeURIComponent(raw); } catch (_) { /* keep raw */ }
     const absolute = /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(rel);
-    const full = absolute ? rel : (dir ? dir + '\\' + rel.replace(/\//g, '\\') : null);
+    const full = absolute ? rel : (dir ? dir + '/' + rel : null);
     let src = null;
     if (full) {
       try {
@@ -1934,7 +1980,8 @@ function setupFind() {
     } else if (e.key === 'F3') {
       e.preventDefault();
       findStep(e.shiftKey ? -1 : 1);
-    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+    } else if ((e.ctrlKey || e.metaKey) &&
+               (e.key.toLowerCase() === 'h' || (IS_MAC && e.altKey && e.code === 'KeyF'))) {
       e.preventDefault();
       setReplaceVisible(true);
       replaceInput.focus();
@@ -2151,6 +2198,14 @@ function onKeyDown(e) {
   if (!ctrl) return;
 
   const key = e.key.toLowerCase();
+
+  // ⌥⌘F opens replace on macOS — ⌘H belongs to the system Hide command
+  // there. (e.code, because Option rewrites e.key to "ƒ".)
+  if (IS_MAC && e.altKey && e.code === 'KeyF') {
+    e.preventDefault();
+    openFind(true);
+    return;
+  }
 
   if (key === 'n') {
     e.preventDefault();

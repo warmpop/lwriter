@@ -6,9 +6,11 @@
 
 ## Current status
 
-**Phase:** 4 complete — polish & distribution. Windows build shippable.
-Next: Phase 5 (macOS port) — needs a Mac or CI runner; get the repo onto GitHub first.
-**Last updated:** 2026-07-21 (images + sidebar folder tree — needs a visual check)
+**Phase:** 5 (macOS port) implemented — builds and launches natively on Apple
+Silicon (.app + .dmg). Windows build still shippable, unaffected.
+Next: visual pass on-device (traffic lights, chrome padding, theme
+live-follow, font metrics in WKWebView), then ship v0.2.0.
+**Last updated:** 2026-07-21 (macOS port — needs a visual check)
 
 ## Quick orientation
 
@@ -291,12 +293,64 @@ if it keeps growing. Not doing a risky refactor before the macOS port.
   bar/sidebar, or the font menu open, blocks the fade; `mouseleave` re-arms.
   Armed at boot and on every loadDocument.
 
-### Phase 5 — macOS port (planned)
-- [ ] Window chrome: hide custom caption buttons, use native traffic lights (overlay titlebar)
-- [ ] `show_in_explorer`/`open_notes_dir` → `open -R` / `open` on macOS
-- [ ] Font stack fallbacks (no Segoe UI); verify Cmd-key shortcuts (handler already accepts metaKey)
-- [ ] Build via GitHub Actions macOS runner (no cross-compile from Windows); .dmg bundle
-- [ ] Code signing/notarization decision (unsigned .app requires right-click-Open)
+### Phase 5 — macOS port (2026-07-21)
+- [x] Dialog threading fix: every rfd dialog command (open/save/folder/font/
+  confirm) now goes through a new `run_dialog()` helper in lib.rs. On mac it
+  hops to the main thread via `app.run_on_main_thread` + a channel (AppKit
+  panels must run there — the old blanket `spawn_blocking` could hang/crash);
+  other platforms keep the plain blocking-thread path. Required threading
+  `tauri::AppHandle` into `open_file_dialog`, `save_file_dialog`,
+  `open_folder_dialog`, `save_html_dialog`, `pick_font`, `confirm_save`.
+- [x] `show_in_explorer` / `open_notes_dir` → new `open_in_file_manager()`
+  (`open -R` / `open` on mac, `explorer /select,` on Windows, `xdg-open`
+  elsewhere). Sidebar copy is platform-aware ("show in finder" vs
+  "show in explorer").
+- [x] `list_system_fonts` mac branch: no registry, so it walks
+  `/System/Library/Fonts`, `/Library/Fonts`, `~/Library/Fonts` (2 levels
+  deep) for ttf/otf/ttc, display name = file stem.
+- [x] Guide note (`GUIDE_CONTENT`) is now rendered per-platform
+  (`guide_content()`): mac gets a forward-slash notes path and Cmd-key
+  wording instead of the Windows original.
+- [x] `app.js` path joins that hardcoded `\\` (archive listing/move target,
+  vault subdir paths, linked-folder prefix matching, image hydration)
+  switched to `/` — Rust's std accepts forward slashes on Windows too, so
+  this is one code path for both platforms instead of branching.
+- [x] Platform-aware UI text: `IS_MAC` (UA sniff) toggles a `mac` class on
+  `<html>`; `keyLabel()` rewrites "Ctrl+"/"Ctrl+Shift+" to ⌘/⇧⌘ across
+  tooltips, the shortcuts grid, and context-menu hints. Notes-path string
+  and "recycle bin"/"trash" wording also swap per platform. Find & Replace
+  binds ⌥⌘F on mac (⌘H is the system Hide command there) alongside Ctrl+H.
+- [x] Native window close: added an `onCloseRequested` listener so the
+  traffic-light ✕ (and Cmd+W/Alt+F4) runs the same unsaved-changes flow as
+  the custom ✕ button; `close_window` now calls `window.destroy()` instead
+  of `close()` to avoid re-triggering that listener.
+- [x] `tauri.macos.conf.json` added (Tauri merges platform config): native
+  decorations, `titleBarStyle: Overlay` + `hiddenTitle` for traffic lights
+  over the custom titlebar, `bundle.targets: [app, dmg]`, `icon.icns`.
+  Confirmed via the built Info.plist (`app`/`dmg` bundles + `icon.icns`
+  actually landed — the base config only lists `nsis` + `.ico`).
+  `styles.css` hides `#titlebar-controls` and pads `#titlebar-left` ~78px
+  on `html.mac` so the sidebar/Aa buttons clear the lights.
+- [x] `--ui-font` gained `-apple-system, "SF Pro Text"` ahead of the Segoe
+  UI stack.
+- [x] Icon: extracted the 256×256 PNG frame from the repo's
+  `icon_512x512@2x.ico` (python, manual ICO directory parse — the 512
+  "@2x" name was aspirational, the largest real frame is 256) and ran
+  `cargo tauri icon` to generate the full mac set incl. `icon.icns`.
+- [x] Installed Rust (rustup, stable-aarch64-apple-darwin) + tauri-cli on
+  this machine; `cargo build` (debug) and `cargo tauri build` (release,
+  universal not attempted — arm64 host only) both succeed.
+  `target/release/bundle/macos/lwriter.app` launches and stays up cleanly
+  (checked process liveness + stderr; no screen-recording/accessibility
+  permission in this environment to grab a pixel screenshot or drive the
+  UI, so the visual pass — traffic lights, chrome padding, live theme
+  follow, WKWebView font metrics/caret alignment, all the Phase-5 verify-list
+  items — is still unconfirmed and needs an on-device look).
+- [ ] Visual verification pass (see verify list below) — blocked on
+  screen access in this session, not on code.
+- [ ] Code signing/notarization decision (unsigned .app requires
+  right-click-Open — noted for release notes either way).
+- [ ] GitHub Actions macOS runner for CI builds (built locally for now).
 
 **Verification note (2026-07-12):** dark/light live theme switching, Quattro rendering, and
 chrome fade were verified on-screen. The sidebar + font menu build & parse clean but the

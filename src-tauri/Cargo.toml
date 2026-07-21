@@ -1,7 +1,7 @@
 [package]
 name = "lwriter"
-version = "0.1.0"
-description = "A calm, FOSS writing app for Windows"
+version = "0.2.0"
+description = "A calm, FOSS writing app"
 edition = "2021"
 license = "MIT"
 

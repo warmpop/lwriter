@@ -59,6 +59,18 @@ open settings (the gear at the top of the sidebar) to change the theme,
 editor font, font size, line width, line spacing, and more.
 ";
 
+/// The guide is written per-platform: mac builds talk about Cmd and a
+/// forward-slash notes path, everything else keeps the Windows wording.
+fn guide_content() -> String {
+    #[cfg(target_os = "macos")]
+    return GUIDE_CONTENT
+        .replace("Documents\\lwriter", "Documents/lwriter")
+        .replace("Ctrl+", "Cmd+")
+        .replace("follows Windows", "follows macOS");
+    #[cfg(not(target_os = "macos"))]
+    GUIDE_CONTENT.to_string()
+}
+
 /// The notes library: Documents\lwriter. Created on first use,
 /// seeded with the guide note.
 fn notes_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -70,9 +82,67 @@ fn notes_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| format!("Could not create notes folder: {e}"))?;
         // First run: give the library its one starter note
-        let _ = fs::write(dir.join(GUIDE_NAME), GUIDE_CONTENT);
+        let _ = fs::write(dir.join(GUIDE_NAME), guide_content());
     }
     Ok(dir)
+}
+
+/// Run a native dialog off the command handler. On macOS, AppKit panels must
+/// run on the main thread (rfd's sync dialogs hang or crash off it); on other
+/// platforms a blocking thread keeps the async runtime free.
+async fn run_dialog<T, F>(app: &tauri::AppHandle, f: F) -> Option<T>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    #[cfg(target_os = "macos")]
+    {
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.run_on_main_thread(move || {
+            let _ = tx.send(f());
+        })
+        .ok()?;
+        tauri::async_runtime::spawn_blocking(move || rx.recv().ok())
+            .await
+            .ok()
+            .flatten()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        tauri::async_runtime::spawn_blocking(f).await.ok()
+    }
+}
+
+/// Reveal a path in the platform file manager: Explorer on Windows,
+/// Finder on macOS (`open -R` selects a file, `open` shows a folder).
+fn open_in_file_manager(p: &std::path::Path, select: bool) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let mut cmd = {
+        let mut c = std::process::Command::new("open");
+        if select {
+            c.arg("-R");
+        }
+        c.arg(p);
+        c
+    };
+    #[cfg(target_os = "windows")]
+    let mut cmd = {
+        let mut c = std::process::Command::new("explorer");
+        if select {
+            c.arg("/select,");
+        }
+        c.arg(p);
+        c
+    };
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let mut cmd = {
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(if select { p.parent().unwrap_or(p) } else { p });
+        c
+    };
+    cmd.spawn()
+        .map_err(|e| format!("Could not open the file manager: {e}"))?;
+    Ok(())
 }
 
 #[derive(serde::Serialize)]
@@ -112,15 +182,11 @@ fn note_meta(entry: &fs::DirEntry, root: &PathBuf) -> Option<NoteMeta> {
     })
 }
 
-/// Reveal the notes library in Explorer.
+/// Reveal the notes library in the system file manager.
 #[tauri::command]
 fn open_notes_dir(app: tauri::AppHandle) -> Result<(), String> {
     let dir = notes_dir(&app)?;
-    std::process::Command::new("explorer")
-        .arg(&dir)
-        .spawn()
-        .map_err(|e| format!("Could not open notes folder: {e}"))?;
-    Ok(())
+    open_in_file_manager(&dir, false)
 }
 
 /// List text/markdown files in the notes library, newest first.
@@ -349,18 +415,12 @@ fn move_note(path: String, dest_dir: String) -> Result<String, String> {
     Ok(target.to_string_lossy().into_owned())
 }
 
-/// Reveal a file (selected) or folder in Explorer.
+/// Reveal a file (selected) or folder in Explorer / Finder.
 #[tauri::command]
 fn show_in_explorer(path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
-    let mut cmd = std::process::Command::new("explorer");
-    if p.is_file() {
-        cmd.arg("/select,").arg(&p);
-    } else {
-        cmd.arg(&p);
-    }
-    cmd.spawn().map_err(|e| format!("Could not open Explorer: {e}"))?;
-    Ok(())
+    let select = p.is_file();
+    open_in_file_manager(&p, select)
 }
 
 /// The notes library path, for the frontend (move targets, etc.).
@@ -371,8 +431,8 @@ fn get_notes_dir(app: tauri::AppHandle) -> Result<String, String> {
 
 /// Native "save as HTML" dialog for the export feature.
 #[tauri::command]
-async fn save_html_dialog(default_name: String) -> Option<String> {
-    tauri::async_runtime::spawn_blocking(move || {
+async fn save_html_dialog(app: tauri::AppHandle, default_name: String) -> Option<String> {
+    run_dialog(&app, move || {
         rfd::FileDialog::new()
             .add_filter("HTML", &["html", "htm"])
             .set_file_name(&default_name)
@@ -380,7 +440,6 @@ async fn save_html_dialog(default_name: String) -> Option<String> {
             .map(|p| p.to_string_lossy().into_owned())
     })
     .await
-    .ok()
     .flatten()
 }
 
@@ -401,8 +460,8 @@ fn font_payload(path: &std::path::Path) -> Option<serde_json::Value> {
 /// Let the user pick a font file; returns its display name + base64 bytes so
 /// the frontend can register it via the FontFace API (avoids CSP font-src).
 #[tauri::command]
-async fn pick_font() -> Option<serde_json::Value> {
-    tauri::async_runtime::spawn_blocking(|| {
+async fn pick_font(app: tauri::AppHandle) -> Option<serde_json::Value> {
+    run_dialog(&app, || {
         let path = rfd::FileDialog::new()
             .add_filter("Fonts", FONT_EXTENSIONS)
             .add_filter("All files", &["*"])
@@ -410,7 +469,6 @@ async fn pick_font() -> Option<serde_json::Value> {
         font_payload(&path)
     })
     .await
-    .ok()
     .flatten()
 }
 
@@ -479,20 +537,64 @@ fn list_system_fonts() -> Vec<serde_json::Value> {
             .map(|(name, p)| serde_json::json!({ "name": name, "path": p.to_string_lossy() }))
             .collect();
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        // No registry on macOS — font files live in three well-known folders
+        // (plus subfolders like /System/Library/Fonts/Supplemental). Display
+        // name = file stem, which is good enough for a picker that loads the
+        // chosen file directly.
+        let mut roots = vec![
+            PathBuf::from("/System/Library/Fonts"),
+            PathBuf::from("/Library/Fonts"),
+        ];
+        if let Some(home) = std::env::var_os("HOME") {
+            roots.push(PathBuf::from(home).join("Library/Fonts"));
+        }
+        let mut fonts: Vec<(String, PathBuf)> = Vec::new();
+        let mut stack: Vec<(PathBuf, usize)> = roots.into_iter().map(|r| (r, 0)).collect();
+        while let Some((dir, depth)) = stack.pop() {
+            let Ok(entries) = fs::read_dir(&dir) else { continue };
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.is_dir() {
+                    if depth < 2 {
+                        stack.push((p, depth + 1));
+                    }
+                    continue;
+                }
+                let ext = p
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_lowercase())
+                    .unwrap_or_default();
+                if !matches!(ext.as_str(), "ttf" | "otf" | "ttc" | "otc") {
+                    continue;
+                }
+                let Some(name) = p.file_stem().map(|s| s.to_string_lossy().into_owned()) else {
+                    continue;
+                };
+                fonts.push((name, p));
+            }
+        }
+        fonts.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+        fonts.dedup_by(|a, b| a.0.eq_ignore_ascii_case(&b.0));
+        return fonts
+            .into_iter()
+            .map(|(name, p)| serde_json::json!({ "name": name, "path": p.to_string_lossy() }))
+            .collect();
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
     Vec::new()
 }
 
 /// Show a native folder picker. Returns the chosen folder, or None if cancelled.
 #[tauri::command]
-async fn open_folder_dialog() -> Option<String> {
-    tauri::async_runtime::spawn_blocking(|| {
+async fn open_folder_dialog(app: tauri::AppHandle) -> Option<String> {
+    run_dialog(&app, || {
         rfd::FileDialog::new()
             .pick_folder()
             .map(|p| p.to_string_lossy().into_owned())
     })
     .await
-    .ok()
     .flatten()
 }
 
@@ -504,14 +606,13 @@ fn file_filters(dialog: rfd::FileDialog) -> rfd::FileDialog {
 
 /// Show a native "open file" dialog. Returns the chosen path, or None if cancelled.
 #[tauri::command]
-async fn open_file_dialog() -> Option<String> {
-    tauri::async_runtime::spawn_blocking(|| {
+async fn open_file_dialog(app: tauri::AppHandle) -> Option<String> {
+    run_dialog(&app, || {
         file_filters(rfd::FileDialog::new())
             .pick_file()
             .map(|p| p.to_string_lossy().into_owned())
     })
     .await
-    .ok()
     .flatten()
 }
 
@@ -530,7 +631,7 @@ async fn save_file_dialog(
         .and_then(|p| PathBuf::from(p).parent().map(|d| d.to_path_buf()))
         .or_else(|| start_dir.map(PathBuf::from).filter(|d| d.is_dir()))
         .or_else(|| notes_dir(&app).ok());
-    tauri::async_runtime::spawn_blocking(move || {
+    run_dialog(&app, move || {
         let mut dialog = file_filters(rfd::FileDialog::new()).set_file_name(&default_name);
         if let Some(dir) = start_dir {
             dialog = dialog.set_directory(dir);
@@ -540,15 +641,14 @@ async fn save_file_dialog(
             .map(|p| p.to_string_lossy().into_owned())
     })
     .await
-    .ok()
     .flatten()
 }
 
 /// Ask what to do with unsaved changes: "save" | "discard" | "cancel".
 /// Uses YesNoCancel (native MessageBox) — Yes=save, No=close without saving.
 #[tauri::command]
-async fn confirm_save(file_name: String) -> String {
-    tauri::async_runtime::spawn_blocking(move || {
+async fn confirm_save(app: tauri::AppHandle, file_name: String) -> String {
+    run_dialog(&app, move || {
         let result = rfd::MessageDialog::new()
             .set_title("Unsaved changes")
             .set_description(format!(
@@ -565,7 +665,7 @@ async fn confirm_save(file_name: String) -> String {
         .to_string()
     })
     .await
-    .unwrap_or_else(|_| "cancel".to_string())
+    .unwrap_or_else(|| "cancel".to_string())
 }
 
 #[tauri::command]
@@ -596,7 +696,10 @@ fn toggle_maximize_window(window: tauri::Window) {
 
 #[tauri::command]
 fn close_window(window: tauri::Window) {
-    let _ = window.close();
+    // destroy(), not close(): the frontend listens for close-requested (so the
+    // traffic-light ✕ / Cmd+W can run the unsaved-changes flow), and close()
+    // would loop back into that listener forever.
+    let _ = window.destroy();
 }
 
 #[tauri::command]

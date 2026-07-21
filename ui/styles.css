@@ -81,7 +81,7 @@
 
   /* Editor typography (default: JetBrains Mono; switchable via the Aa menu) */
   --editor-font: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
-  --ui-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --ui-font: -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --editor-size: 18px;
   --editor-lh: 1.75;
   --editor-column: 48rem;
@@ -496,6 +496,12 @@ html, body {
 #btn-maximize .icon-restore { display: none; }
 body.is-maximized #btn-maximize .icon-maximize { display: none; }
 body.is-maximized #btn-maximize .icon-restore { display: block; }
+
+/* macOS: native traffic lights (overlay titlebar) replace the custom
+   caption buttons; the left tools shift right to clear them. The drag
+   region and double-click-to-zoom behavior stay on #titlebar. */
+html.mac #titlebar-controls { display: none; }
+html.mac #titlebar-left { padding-left: 78px; }
 
 /* ---------- Main row: sidebar + editor ---------- */
 #main-row {
