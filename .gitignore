@@ -4,6 +4,9 @@
 # Marketing site — kept out of the app repo for now
 /website/
 
+# Private dev notes (transferred between machines manually)
+/MAC-DEV.md
+
 # Tauri generated schemas
 /src-tauri/gen/schemas/
 
