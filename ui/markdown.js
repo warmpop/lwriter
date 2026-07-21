@@ -50,6 +50,13 @@ const Markdown = (() => {
       return wrapSpan(p1 + p2 + p1, 'md-strike', 'md-syntax', p1, p1);
     });
 
+    // Wikilink embeds (Obsidian): ![[image.png]]
+    segments = splitApply(segments, /(!\[\[)([^\]]*?)(\]\])/g, (match, open, name, close) => {
+      return `<span class="md-syntax">${esc(open)}</span>` +
+             `<span class="md-link">${esc(name)}</span>` +
+             `<span class="md-syntax">${esc(close)}</span>`;
+    });
+
     // Links: [text](url)
     segments = splitApply(segments, /(\[)(.*?)\]\((.*?)\)/g, (match, openBracket, linkText, url) => {
       return `<span class="md-syntax">${esc(openBracket)}</span>` +
@@ -228,19 +235,35 @@ const Markdown = (() => {
   function renderPreview(text) {
     let html = esc(text);
 
+    // Generated HTML is stashed behind  N  tokens so the emphasis
+    // passes below can't rewrite what's inside it (e.g. the underscores in
+    // <img data-msrc="my_cool_image.png"> becoming <em>). Restored before
+    // the block pass.
+    const tokens = [];
+    const stash = (s) => ' ' + (tokens.push(s) - 1) + ' ';
+
     // Code blocks (fenced) — content is already escaped above
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-      return `<pre><code>${code.trim()}</code></pre>`;
-    });
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+      stash(`<pre><code>${code.trim()}</code></pre>`));
 
     // Inline code (must be before bold/italic to avoid nested issues)
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    html = html.replace(/`([^`]+)`/g, (_, code) => stash(`<code>${code}</code>`));
 
-    // Images
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+    // Obsidian wikilink embeds: ![[image.png]] (an optional |size suffix is
+    // accepted and ignored). Local sources become data-msrc placeholders that
+    // the app resolves to data: URIs after render (hydrateImages in app.js).
+    html = html.replace(/!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, (_, name) =>
+      stash(`<img data-msrc="${name.trim()}" alt="">`));
 
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    // Images: ![alt](src) — remote sources load directly, local ones hydrate
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) =>
+      stash(/^(https?:|data:)/i.test(src)
+        ? `<img src="${src}" alt="${alt}">`
+        : `<img data-msrc="${src}" alt="${alt}">`));
+
+    // Links — the label stays outside the stash so **emphasis** in it works
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) =>
+      stash(`<a href="${url}">`) + label + stash('</a>'));
 
     // Bold
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -252,6 +275,11 @@ const Markdown = (() => {
 
     // Strikethrough
     html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+
+    // Restore stashed HTML (looped — a link stash can nest a code stash)
+    for (let pass = 0; pass < 10 && html.indexOf(' ') !== -1; pass++) {
+      html = html.replace(/ (\d+) /g, (_, i) => tokens[i]);
+    }
 
     // Headings and paragraphs
     const lines = html.split('\n');

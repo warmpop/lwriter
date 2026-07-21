@@ -637,6 +637,48 @@ body.is-maximized #btn-maximize .icon-restore { display: block; }
   display: none;
 }
 
+/* Nested subfolders inside a linked folder (Obsidian-style tree) */
+.subdir-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: default;
+  transition: background 0.15s ease;
+}
+
+.subdir-header:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.subdir-header .chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.subdir-section.collapsed-section > .subdir-header .chevron {
+  transform: rotate(-90deg);
+}
+
+.subdir-header .subdir-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subdir-section.collapsed-section > .subdir-items {
+  display: none;
+}
+
 #notes-list {
   flex: 1;
   overflow-y: auto;
@@ -1028,6 +1070,20 @@ kbd {
   transition: background 0.15s ease;
 }
 
+.settings-select {
+  max-width: 13rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  outline: none;
+}
+.settings-select:focus { border-color: var(--accent); }
+.settings-select option { background: var(--bg); color: var(--text); }
+
 .settings-btn:hover {
   background: var(--hover);
 }
@@ -1347,6 +1403,17 @@ kbd {
 #preview img {
   max-width: 100%;
   border-radius: 6px;
+}
+
+/* Local image embed that couldn't be resolved on disk */
+.img-missing {
+  display: inline-block;
+  padding: 0.3em 0.6em;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 /* ---------- Animations ---------- */

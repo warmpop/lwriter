@@ -1,6 +1,9 @@
 # Rust / Cargo build output
 /src-tauri/target/
 
+# Marketing site — kept out of the app repo for now
+/website/
+
 # Tauri generated schemas
 /src-tauri/gen/schemas/
 

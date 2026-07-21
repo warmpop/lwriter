@@ -77,6 +77,8 @@ const state = {
   sidebarVisible: false,
   chromeVisible: true,
   linkedFolders: [],       // [{ path, name, collapsed }] — e.g. Obsidian vaults
+  expandedDirs: {},        // { "folderPath::sub/dir": true } — open tree branches
+  newNoteDir: null,        // where an unsaved Ctrl+N note should save by default
   notesRoot: null,         // absolute path of Documents\lwriter (fetched once)
   archiveCollapsed: true,  // "archived" sidebar section folded by default
 };
@@ -154,6 +156,7 @@ function loadSettings() {
           .map(f => ({ path: f.path, name: f.name || folderNameFromPath(f.path), collapsed: !!f.collapsed }));
       }
       if (s.archiveCollapsed !== undefined) state.archiveCollapsed = s.archiveCollapsed;
+      if (s.expandedDirs && typeof s.expandedDirs === 'object') state.expandedDirs = s.expandedDirs;
     }
   } catch (_) { /* ignore */ }
 }
@@ -174,6 +177,7 @@ function saveSettings() {
     focusMode: state.focusMode,
     sidebarVisible: state.sidebarVisible,
     linkedFolders: state.linkedFolders,
+    expandedDirs: state.expandedDirs,
     archiveCollapsed: state.archiveCollapsed,
   }));
 }
@@ -183,6 +187,7 @@ async function restoreSession() {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return;
     const s = JSON.parse(raw);
+    if (typeof s.newNoteDir === 'string') state.newNoteDir = s.newNoteDir;
     if (s.content) {
       dom.editor.value = s.content;
       updateBackdrop();
@@ -213,6 +218,7 @@ function saveSession() {
   localStorage.setItem(SESSION_KEY, JSON.stringify({
     content: dom.editor.value,
     filePath: state.filePath,
+    newNoteDir: state.newNoteDir,
   }));
 }
 
@@ -329,13 +335,12 @@ async function registerCustomFont() {
   }
 }
 
-async function pickCustomFont() {
-  const result = await invoke('pick_font');
-  if (!result) return;
-  state.customFont = { name: result.name, data: result.data, mono: false };
+async function applyCustomFontData(name, data) {
+  state.customFont = { name, data, mono: false };
   if (!(await registerCustomFont())) {
     state.customFont = null;
     toast('could not load that font');
+    syncSettingsUI();
     return;
   }
   state.editorFont = 'custom';
@@ -343,7 +348,32 @@ async function pickCustomFont() {
   syncLayers();
   saveSettings();
   syncSettingsUI();
-  toast('custom font applied');
+  toast(`font applied: ${name}`);
+}
+
+async function pickCustomFont() {
+  const result = await invoke('pick_font');
+  if (!result) return;
+  await applyCustomFontData(result.name, result.data);
+}
+
+/* Installed system fonts (registry-enumerated) — the Windows Fonts folder
+   is a virtual shell view that file dialogs can't pick from, so the
+   settings dialog offers a real dropdown instead. Populated lazily. */
+let systemFontsLoaded = false;
+
+async function populateSystemFonts() {
+  if (systemFontsLoaded) return;
+  systemFontsLoaded = true;
+  const fonts = (await invoke('list_system_fonts').catch(() => null)) || [];
+  const sel = $('#system-font');
+  for (const f of fonts) {
+    const opt = document.createElement('option');
+    opt.value = f.path;
+    opt.dataset.name = f.name;
+    opt.textContent = f.name;
+    sel.appendChild(opt);
+  }
 }
 
 function clearCustomFont() {
@@ -436,7 +466,7 @@ function folderNameFromPath(path) {
   return path.replace(/\\/g, '/').split('/').filter(Boolean).pop() || path;
 }
 
-function makeNoteItem(note) {
+function makeNoteItem(note, opts) {
   const item = document.createElement('div');
   item.className = 'note-item';
   item.setAttribute('role', 'button');
@@ -447,13 +477,28 @@ function makeNoteItem(note) {
   name.textContent = note.name.replace(/\.(md|markdown|txt|text)$/i, '');
   const date = document.createElement('span');
   date.className = 'note-date';
-  const place = note._sourceName
+  // Inside the folder tree the location is conveyed by structure, not text
+  const place = (opts && opts.hidePlace) ? '' : (note._sourceName
     ? note._sourceName + (note.subdir ? '/' + note.subdir : '')
-    : note.subdir;
+    : note.subdir);
   date.textContent = (place ? place + ' · ' : '') + relativeTime(note.modified);
   item.append(name, date);
   item.title = note.path;
   item.addEventListener('click', () => openNotePath(note.path));
+  return item;
+}
+
+/** Row for the not-yet-saved current document. */
+function makeUnsavedItem() {
+  const item = document.createElement('div');
+  item.className = 'note-item current';
+  const name = document.createElement('span');
+  name.className = 'note-name';
+  name.textContent = state.fileName;
+  const date = document.createElement('span');
+  date.className = 'note-date';
+  date.textContent = 'unsaved — Ctrl+S to keep it';
+  item.append(name, date);
   return item;
 }
 
@@ -482,7 +527,7 @@ async function refreshNotes() {
   ));
   const archived = [];
   archiveRoots.forEach((r, i) => {
-    for (const n of archiveResults[i] || []) {
+    for (const n of (archiveResults[i] && archiveResults[i].notes) || []) {
       n._archiveRoot = r.path;
       n._sourceName = r.name;
       archived.push(n);
@@ -492,19 +537,24 @@ async function refreshNotes() {
 
   dom.notesList.textContent = '';
 
-  // The current document only exists on disk once saved — until then,
-  // represent it with an "unsaved" row pinned to the top.
-  if (!state.filePath) {
-    const item = document.createElement('div');
-    item.className = 'note-item current';
-    const name = document.createElement('span');
-    name.className = 'note-name';
-    name.textContent = state.fileName;
-    const date = document.createElement('span');
-    date.className = 'note-date';
-    date.textContent = 'unsaved — Ctrl+S to keep it';
-    item.append(name, date);
-    dom.notesList.appendChild(item);
+  // The current document only exists on disk once saved. If Ctrl+N happened
+  // inside a linked folder, the unsaved row belongs in that folder's tree;
+  // otherwise it's pinned to the top of the list.
+  let unsavedHome = null; // { folder, subdir } within a linked folder
+  if (!state.filePath && state.newNoteDir) {
+    for (const f of state.linkedFolders) {
+      if (state.newNoteDir === f.path || state.newNoteDir.startsWith(f.path + '\\')) {
+        const rel = state.newNoteDir === f.path
+          ? ''
+          : state.newNoteDir.slice(f.path.length + 1).replace(/\\/g, '/');
+        unsavedHome = { folder: f, subdir: rel };
+        break;
+      }
+    }
+  }
+
+  if (!state.filePath && !unsavedHome) {
+    dom.notesList.appendChild(makeUnsavedItem());
   }
 
   if (notes.length === 0 && state.filePath && state.linkedFolders.length === 0) {
@@ -519,7 +569,9 @@ async function refreshNotes() {
   }
 
   state.linkedFolders.forEach((folder, i) => {
-    dom.notesList.appendChild(makeFolderSection(folder, folderResults[i]));
+    const unsavedSubdir = unsavedHome && unsavedHome.folder === folder
+      ? unsavedHome.subdir : null;
+    dom.notesList.appendChild(makeFolderSection(folder, folderResults[i], unsavedSubdir));
   });
 
   if (archived.length > 0) {
@@ -563,10 +615,12 @@ function makeArchiveSection(archived) {
 }
 
 /* ---------- Linked folders (Obsidian vaults etc.) ---------- */
-function makeFolderSection(folder, notes) {
+function makeFolderSection(folder, listing, unsavedSubdir) {
+  const hasUnsaved = unsavedSubdir !== null && unsavedSubdir !== undefined;
   const section = document.createElement('div');
   section.className = 'folder-section';
-  section.classList.toggle('collapsed-section', folder.collapsed);
+  // A section holding the unsaved current note stays open so it's visible
+  section.classList.toggle('collapsed-section', folder.collapsed && !hasUnsaved);
 
   const header = document.createElement('button');
   header.tabIndex = -1;
@@ -581,7 +635,7 @@ function makeFolderSection(folder, notes) {
   label.textContent = folder.name;
   const count = document.createElement('span');
   count.className = 'folder-count';
-  count.textContent = notes ? `(${notes.length})` : '';
+  count.textContent = listing ? `(${listing.notes.length})` : '';
   const unlink = document.createElement('button');
   unlink.tabIndex = -1;
   unlink.className = 'folder-unlink';
@@ -605,24 +659,102 @@ function makeFolderSection(folder, notes) {
 
   const items = document.createElement('div');
   items.className = 'folder-items';
-  if (notes === null) {
+  if (listing === null) {
     const missing = document.createElement('div');
     missing.className = 'notes-empty';
     missing.textContent = 'folder not found — was it moved?';
     items.appendChild(missing);
-  } else if (notes.length === 0) {
+  } else if (listing.notes.length === 0 && listing.dirs.length === 0 && !hasUnsaved) {
     const empty = document.createElement('div');
     empty.className = 'notes-empty';
     empty.textContent = 'no notes in this folder';
     items.appendChild(empty);
   } else {
-    for (const note of notes) {
-      items.appendChild(makeNoteItem(note));
-    }
+    // The unsaved current note renders inside the branch it will save into
+    const entries = hasUnsaved
+      ? { notes: [...listing.notes, { name: state.fileName, subdir: unsavedSubdir, modified: Date.now(), _unsaved: true }], dirs: listing.dirs }
+      : listing;
+    renderNoteTree(items, buildNoteTree(entries), folder, '', 0, hasUnsaved ? unsavedSubdir : null);
   }
 
   section.append(header, items);
   return section;
+}
+
+/* ---------- Folder tree ----------
+   A linked folder's recursive listing is grouped by its subdir paths into
+   nested, collapsible sections (Obsidian-style), instead of one flat list.
+   Open/closed state persists per branch in state.expandedDirs. */
+
+/** Group a recursive listing into nested { dirs, notes } by subdir path.
+    Directories come from the listing's own dirs array, so empty folders
+    still appear in the tree. */
+function buildNoteTree(listing) {
+  const root = { dirs: new Map(), notes: [] };
+  const nodeFor = (relPath) => {
+    let node = root;
+    if (relPath) {
+      for (const part of relPath.split('/')) {
+        if (!node.dirs.has(part)) node.dirs.set(part, { dirs: new Map(), notes: [] });
+        node = node.dirs.get(part);
+      }
+    }
+    return node;
+  };
+  for (const dir of listing.dirs || []) nodeFor(dir);
+  for (const note of listing.notes) nodeFor(note.subdir).notes.push(note);
+  return root;
+}
+
+// Numeric-aware compare so "03.md" and "10.md" sort like files, not strings
+const treeCompare = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;
+
+function renderNoteTree(container, node, folder, subpath, depth, revealPath) {
+  const indent = (10 + depth * 14) + 'px';
+
+  for (const name of [...node.dirs.keys()].sort(treeCompare)) {
+    const childPath = subpath ? subpath + '/' + name : name;
+    const key = folder.path + '::' + childPath;
+    // Branches on the way to the unsaved current note are held open
+    const onRevealPath = revealPath != null &&
+      (revealPath === childPath || revealPath.startsWith(childPath + '/'));
+
+    const section = document.createElement('div');
+    section.className = 'subdir-section';
+    section.classList.toggle('collapsed-section', !state.expandedDirs[key] && !onRevealPath);
+
+    const header = document.createElement('button');
+    header.tabIndex = -1;
+    header.className = 'subdir-header';
+    header.style.paddingLeft = indent;
+    header._subdir = { key, path: folder.path + '\\' + childPath.replace(/\//g, '\\') };
+    header.innerHTML =
+      '<svg class="chevron" width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">' +
+      '<path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const label = document.createElement('span');
+    label.className = 'subdir-name';
+    label.textContent = name;
+    header.appendChild(label);
+    header.addEventListener('click', () => {
+      if (state.expandedDirs[key]) delete state.expandedDirs[key];
+      else state.expandedDirs[key] = true;
+      section.classList.toggle('collapsed-section', !state.expandedDirs[key]);
+      saveSettings();
+    });
+
+    const children = document.createElement('div');
+    children.className = 'subdir-items';
+    renderNoteTree(children, node.dirs.get(name), folder, childPath, depth + 1, revealPath);
+
+    section.append(header, children);
+    container.appendChild(section);
+  }
+
+  for (const note of [...node.notes].sort((a, b) => treeCompare(a.name, b.name))) {
+    const item = note._unsaved ? makeUnsavedItem() : makeNoteItem(note, { hidePlace: true });
+    item.style.paddingLeft = indent;
+    container.appendChild(item);
+  }
 }
 
 async function linkFolder() {
@@ -712,9 +844,12 @@ function setupContextMenus() {
   dom.sidebar.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     const noteEl = e.target.closest('.note-item');
+    const subdirEl = e.target.closest('.subdir-header');
     const folderEl = e.target.closest('.folder-header');
     if (noteEl && noteEl._note) {
       showContextMenu(e.clientX, e.clientY, noteContextItems(noteEl._note, noteEl));
+    } else if (subdirEl && subdirEl._subdir) {
+      showContextMenu(e.clientX, e.clientY, subdirContextItems(subdirEl._subdir));
     } else if (folderEl && folderEl._folder) {
       showContextMenu(e.clientX, e.clientY, folderContextItems(folderEl._folder));
     } else {
@@ -765,6 +900,7 @@ function folderContextItems(folder) {
         refreshNotes();
       },
     },
+    { label: 'new note here', action: () => newFile(folder.path) },
     { label: 'show in explorer', action: () => invoke('show_in_explorer', { path: folder.path }).catch(() => {}) },
     '-',
     {
@@ -777,6 +913,23 @@ function folderContextItems(folder) {
         toast(`unlinked ${folder.name} — files untouched`);
       },
     },
+  ];
+}
+
+function subdirContextItems(sub) {
+  const expanded = !!state.expandedDirs[sub.key];
+  return [
+    {
+      label: expanded ? 'collapse' : 'expand',
+      action: () => {
+        if (expanded) delete state.expandedDirs[sub.key];
+        else state.expandedDirs[sub.key] = true;
+        saveSettings();
+        refreshNotes();
+      },
+    },
+    { label: 'new note here', action: () => newFile(sub.path) },
+    { label: 'show in explorer', action: () => invoke('show_in_explorer', { path: sub.path }).catch(() => {}) },
   ];
 }
 
@@ -991,6 +1144,20 @@ function setupSettings() {
   $('#pick-font').addEventListener('click', pickCustomFont);
   $('#clear-font').addEventListener('click', clearCustomFont);
 
+  const sysFont = $('#system-font');
+  sysFont.addEventListener('keydown', (e) => e.stopPropagation());
+  sysFont.addEventListener('change', async () => {
+    const opt = sysFont.selectedOptions[0];
+    if (!opt || !opt.value) return;
+    const res = await invoke('read_font_file', { path: opt.value }).catch(() => null);
+    if (!res) {
+      toast('could not read that font');
+      sysFont.value = '';
+      return;
+    }
+    await applyCustomFontData(opt.dataset.name || res.name, res.data);
+  });
+
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   const lhInput = $('#custom-lh');
@@ -1021,6 +1188,7 @@ function setupSettings() {
 
 function openSettings() {
   syncSettingsUI();
+  populateSystemFonts();
   $('#settings-overlay').classList.remove('hidden');
 }
 
@@ -1056,6 +1224,10 @@ function syncSettingsUI() {
   $('#custom-font-name').textContent = state.customFont ? state.customFont.name : '';
   $('#pick-font').textContent = state.customFont ? 'replace…' : 'choose file…';
   $('#clear-font').classList.toggle('hidden', !state.customFont);
+  const sysSel = $('#system-font');
+  const sysMatch = state.customFont &&
+    [...sysSel.options].find(o => o.dataset.name === state.customFont.name);
+  sysSel.value = sysMatch ? sysMatch.value : '';
   const lhInput = $('#custom-lh');
   if (document.activeElement !== lhInput) lhInput.value = state.customLineHeight ?? '';
   const widthInput = $('#custom-width');
@@ -1086,6 +1258,7 @@ function resetFontSize() {
 /* ---------- Editor events ---------- */
 function setupEditorEvents() {
   dom.editor.addEventListener('input', onEditorChange);
+  dom.editor.addEventListener('paste', onEditorPaste);
   dom.editor.addEventListener('click', onCaretMove);
   dom.editor.addEventListener('keyup', onCaretMove);
   dom.editor.addEventListener('keydown', onEditorKeyDown);
@@ -1227,6 +1400,10 @@ function fileNameFromPath(path) {
   return parts[parts.length - 1] || 'Untitled';
 }
 
+function parentDir(path) {
+  return path.replace(/[\\/][^\\/]+$/, '');
+}
+
 /* ---------- Window controls ---------- */
 function setupWindowControls() {
   dom.btnMin.addEventListener('click', () => invoke('minimize_window'));
@@ -1307,11 +1484,16 @@ function loadDocument(path, contents) {
   saveSession();
   dom.editorArea.scrollTop = 0;
   dom.editor.focus();
+  scheduleChromeHide(); // fresh document = ready to write, chrome fades
   if (state.sidebarVisible) refreshNotes();
 }
 
-async function newFile() {
+async function newFile(startDir) {
   if (!(await confirmUnsaved())) return;
+  // A new note belongs to the folder you're working in: the one you
+  // right-clicked, or the current note's folder — not always the library.
+  state.newNoteDir = (typeof startDir === 'string' && startDir) ||
+    (state.filePath ? parentDir(state.filePath) : state.newNoteDir);
   loadDocument(null, '');
   // A new note means writing, not browsing — get the sidebar out of the way
   if (state.sidebarVisible) {
@@ -1353,6 +1535,7 @@ async function saveFileAs() {
   const path = await invoke('save_file_dialog', {
     defaultName: state.fileName === 'Untitled' ? 'Untitled.md' : state.fileName,
     currentPath: state.filePath,
+    startDir: state.filePath ? null : state.newNoteDir,
   });
   if (!path) return;
   try {
@@ -1434,6 +1617,7 @@ function togglePreview() {
   if (state.previewMode) {
     closeFind();
     dom.preview.innerHTML = Markdown.renderPreview(dom.editor.value);
+    hydrateImages(dom.preview); // async — local images pop in as they load
     dom.preview.classList.remove('hidden');
     dom.preview.classList.add('fade-in-up');
     dom.editorWrapper.classList.add('hidden');
@@ -1509,6 +1693,10 @@ function buildHtmlDocument(title, bodyHtml) {
   li { margin: 0.35rem 0; }
   hr { border: none; border-top: 1px solid #e5e5e5; margin: 2.5rem auto; width: 8rem; }
   img { max-width: 100%; border-radius: 6px; }
+  .img-missing {
+    display: inline-block; padding: 0.3em 0.6em; border: 1px dashed #d4d4d4;
+    border-radius: 6px; font-size: 0.85em; font-style: italic; color: #999;
+  }
   @media (prefers-color-scheme: dark) {
     body { color: #e5e5e5; background: #191919; }
     a { color: #60a5fa; }
@@ -1531,7 +1719,10 @@ async function exportHtml() {
   if (state.previewMode) togglePreview();
   if (!dom.editor.value.trim()) { toast('nothing to export'); return; }
   const title = deriveTitle();
-  const full = buildHtmlDocument(title, Markdown.renderPreview(dom.editor.value));
+  const body = document.createElement('div');
+  body.innerHTML = Markdown.renderPreview(dom.editor.value);
+  await hydrateImages(body); // embed local images as data: URIs — stays self-contained
+  const full = buildHtmlDocument(title, body.innerHTML);
   const stem = state.fileName.replace(/\.(md|markdown|txt|text)$/i, '') || 'Untitled';
   const path = await invoke('save_html_dialog', { defaultName: stem + '.html' });
   if (!path) return;
@@ -1589,6 +1780,125 @@ function wrapLink() {
   replaceRange(start, end, '[' + selected + ']()');
   const pos = start + selected.length + 3; // between the parentheses
   ta.selectionStart = ta.selectionEnd = pos;
+}
+
+/* ---------- Images (Obsidian-style attachments) ----------
+   Pasted or dropped images are copied into the folder of the current note
+   (the way Obsidian stores attachments) and embedded as ![[name]]. The
+   preview resolves local embeds to data: URIs via the Rust read_image
+   command, so no filesystem access happens from JS. */
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico'];
+const TXT_EXTS = ['txt', 'md', 'markdown', 'text'];
+
+function noteDir() {
+  return state.filePath ? state.filePath.replace(/[\\/][^\\/]+$/, '') : null;
+}
+
+function extOf(path) {
+  const m = /\.([^.\\/]+)$/.exec(path);
+  return m ? m[1].toLowerCase() : '';
+}
+
+function bytesToBase64(bytes) {
+  let bin = '';
+  const CHUNK = 0x8000; // avoid call-stack limits on large images
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
+function insertAtCaret(text) {
+  replaceRange(dom.editor.selectionStart, dom.editor.selectionEnd, text);
+}
+
+function pastedImageName(mime) {
+  const ext = ({
+    'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif',
+    'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/bmp': 'bmp',
+    'image/avif': 'avif',
+  })[mime] || 'png';
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+                pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  return `Pasted image ${stamp}.${ext}`; // Obsidian's naming convention
+}
+
+async function onEditorPaste(e) {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  let file = null;
+  for (const it of items) {
+    if (it.kind === 'file' && it.type.startsWith('image/')) {
+      file = it.getAsFile();
+      break;
+    }
+  }
+  if (!file) return; // no image on the clipboard — native paste proceeds
+  e.preventDefault();
+  const dir = noteDir();
+  if (!dir) {
+    toast('save the note first — images are stored next to it');
+    return;
+  }
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const name = await invoke('save_image', {
+      dir,
+      name: pastedImageName(file.type),
+      data: bytesToBase64(bytes),
+    });
+    insertAtCaret(`![[${name}]]`);
+    toast('image saved next to the note');
+  } catch (err) {
+    toast(String(err));
+  }
+}
+
+async function importDroppedImage(path) {
+  const dir = noteDir();
+  if (!dir) {
+    toast('save the note first — images are stored next to it');
+    return;
+  }
+  try {
+    const name = await invoke('import_image', { dir, srcPath: path });
+    insertAtCaret(`![[${name}]]`);
+    toast('image copied next to the note');
+  } catch (err) {
+    toast(String(err));
+  }
+}
+
+/** Resolve <img data-msrc> placeholders (local images) to data: URIs.
+    Relative paths resolve against the current note's folder. */
+async function hydrateImages(container) {
+  const dir = noteDir();
+  const cache = new Map(); // same image embedded twice → one disk read
+  for (const img of container.querySelectorAll('img[data-msrc]')) {
+    const raw = img.getAttribute('data-msrc');
+    let rel = raw;
+    try { rel = decodeURIComponent(raw); } catch (_) { /* keep raw */ }
+    const absolute = /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(rel);
+    const full = absolute ? rel : (dir ? dir + '\\' + rel.replace(/\//g, '\\') : null);
+    let src = null;
+    if (full) {
+      try {
+        if (!cache.has(full)) cache.set(full, await invoke('read_image', { path: full }));
+        src = cache.get(full);
+      } catch (_) { /* fall through to the placeholder */ }
+    }
+    if (src) {
+      img.src = src;
+      img.removeAttribute('data-msrc');
+    } else {
+      const missing = document.createElement('span');
+      missing.className = 'img-missing';
+      missing.textContent = `image not found: ${rel}`;
+      img.replaceWith(missing);
+    }
+  }
 }
 
 /* ---------- Find & replace ---------- */
@@ -1782,12 +2092,21 @@ function replaceAll() {
 }
 
 /* ---------- Chrome auto-hide ----------
-   iA-style calm: the bars fade away while you type and come back
-   the moment the mouse moves. */
+   iA-style calm: the bars are hidden whenever you're just sitting in the
+   editor — typing OR idle with the caret blinking. Any mouse movement
+   brings them back; once the pointer rests, they fade again. */
 let chromeHideTimeout = null;
 
 function setupChromeAutoHide() {
-  document.addEventListener('mousemove', showChrome);
+  document.addEventListener('mousemove', () => {
+    showChrome();
+    scheduleChromeHide();
+  });
+  // hideChrome declines while the pointer is on a bar; re-arm on leaving
+  [dom.titlebar, dom.statusbar].forEach(el =>
+    el.addEventListener('mouseleave', scheduleChromeHide));
+  // The app opens ready to write: chrome fades out from the start
+  scheduleChromeHide();
 }
 
 function scheduleChromeHide() {
@@ -1806,11 +2125,14 @@ function showChrome() {
 }
 
 function hideChrome() {
-  if (state.chromeVisible && document.activeElement === dom.editor && !state.previewMode) {
-    state.chromeVisible = false;
-    dom.titlebar.classList.add('hidden-chrome');
-    dom.statusbar.classList.add('hidden-chrome');
-  }
+  if (!state.chromeVisible || document.activeElement !== dom.editor || state.previewMode) return;
+  // Never yank the bars away while the pointer is actually using them,
+  // or while the font menu (which lives in the titlebar) is open.
+  if (dom.titlebar.matches(':hover') || dom.statusbar.matches(':hover') ||
+      dom.sidebar.matches(':hover') || !dom.fontMenu.classList.contains('hidden')) return;
+  state.chromeVisible = false;
+  dom.titlebar.classList.add('hidden-chrome');
+  dom.statusbar.classList.add('hidden-chrome');
 }
 
 /* ---------- Keyboard shortcuts ---------- */
@@ -1894,36 +2216,47 @@ function onKeyDown(e) {
   }
 }
 
-/* ---------- Drag & drop ---------- */
+/* ---------- Drag & drop ----------
+   Tauri intercepts OS file drops (dragDropEnabled) and reports the paths via
+   its own event; the HTML5 handler stays as a fallback for environments where
+   it doesn't. Text files open; image files are copied next to the current
+   note and embedded, Obsidian-style. */
 function setupDragDrop() {
   document.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation();
   });
 
-  document.addEventListener('drop', async (e) => {
+  document.addEventListener('drop', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    const paths = Array.from(e.dataTransfer?.files || []).map(f => f.path).filter(Boolean);
+    if (paths.length) handleDroppedPaths(paths);
+  });
 
-    const file = e.dataTransfer?.files?.[0];
-    if (!file) return;
+  try {
+    window.__TAURI__?.event?.listen('tauri://drag-drop', (e) => {
+      const paths = (e.payload && e.payload.paths) || [];
+      if (paths.length) handleDroppedPaths(paths);
+    });
+  } catch (_) { /* event API unavailable — the HTML5 fallback above applies */ }
+}
 
-    const path = file.path;
-    if (!path) return;
-
-    const ext = path.split('.').pop().toLowerCase();
-    const valid = ['txt', 'md', 'markdown', 'text'];
-    if (!valid.includes(ext)) return;
-
+async function handleDroppedPaths(paths) {
+  const textPath = paths.find(p => TXT_EXTS.includes(extOf(p)));
+  if (textPath) {
     if (!(await confirmUnsaved())) return;
-
     try {
-      const contents = await invoke('read_file', { path });
-      loadDocument(path, contents);
+      const contents = await invoke('read_file', { path: textPath });
+      loadDocument(textPath, contents);
     } catch (err) {
       console.error('Failed to open dropped file:', err);
     }
-  });
+    return;
+  }
+  for (const p of paths.filter(p => IMAGE_EXTS.includes(extOf(p)))) {
+    await importDroppedImage(p);
+  }
 }
 
 /* ---------- Boot ---------- */

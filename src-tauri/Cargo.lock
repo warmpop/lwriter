@@ -1984,6 +1984,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "trash",
+ "winreg",
 ]
 
 [[package]]
