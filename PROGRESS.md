@@ -6,11 +6,12 @@
 
 ## Current status
 
-**Phase:** 5 (macOS port) implemented — builds and launches natively on Apple
-Silicon (.app + .dmg). Windows build still shippable, unaffected.
+**Phase:** 5 (macOS port) shipped as v0.2.1 (v0.2.0 was pulled — see below).
+Windows build still shippable, unaffected.
 Next: visual pass on-device (traffic lights, chrome padding, theme
-live-follow, font metrics in WKWebView), then ship v0.2.0.
-**Last updated:** 2026-07-21 (macOS port — needs a visual check)
+live-follow, font metrics in WKWebView).
+**Last updated:** 2026-07-21 (v0.2.0 unsigned .app was rejected by Gatekeeper
+as "damaged"; v0.2.1 ad-hoc signs the bundle — see Phase 5 notes)
 
 ## Quick orientation
 
@@ -346,10 +347,26 @@ if it keeps growing. Not doing a risky refactor before the macOS port.
   UI, so the visual pass — traffic lights, chrome padding, live theme
   follow, WKWebView font metrics/caret alignment, all the Phase-5 verify-list
   items — is still unconfirmed and needs an on-device look).
+- [x] Ad-hoc signing fix (2026-07-21): v0.2.0's .dmg shipped with no
+  bundle-level signature — arm64 Mach-Os get an automatic "linker-signed"
+  ad-hoc signature on the executable, but that doesn't seal the bundle
+  (`Sealed Resources=none`, `Info.plist=not bound` under `codesign -dv`),
+  which isn't enough once Gatekeeper sees the quarantine flag a browser
+  download sets: users got "lwriter is damaged and can't be opened,"
+  a config away from the usual "unidentified developer" prompt.
+  `tauri.macos.conf.json` now sets `bundle.macOS.signingIdentity: "-"`, so
+  `cargo tauri build` deep-signs the whole bundle (ad-hoc, no Apple
+  Developer account needed — confirmed via `codesign -dv`: Info.plist now
+  bound, Sealed Resources present). Verified with a simulated quarantine
+  xattr + `spctl -a --type execute` (this dev machine has Gatekeeper
+  assessments globally disabled, so that's as far as it could be tested
+  locally — real confirmation is the next external download). Re-shipped
+  as v0.2.1; v0.2.0's release notes point here.
 - [ ] Visual verification pass (see verify list below) — blocked on
   screen access in this session, not on code.
-- [ ] Code signing/notarization decision (unsigned .app requires
-  right-click-Open — noted for release notes either way).
+- [ ] Notarization (needs an Apple Developer account — warmpop's call).
+  Ad-hoc signing fixes the "damaged" error but Gatekeeper still shows an
+  "unidentified developer" prompt on first launch (right-click → Open).
 - [ ] GitHub Actions macOS runner for CI builds (built locally for now).
 
 **Verification note (2026-07-12):** dark/light live theme switching, Quattro rendering, and

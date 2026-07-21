@@ -20,6 +20,9 @@
   "bundle": {
     "targets": ["app", "dmg"],
     "icon": ["icons/icon.icns"],
-    "shortDescription": "A calm, FOSS writing app"
+    "shortDescription": "A calm, FOSS writing app",
+    "macOS": {
+      "signingIdentity": "-"
+    }
   }
 }
