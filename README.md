@@ -1,6 +1,6 @@
 # lwriter
 
-a calm, distraction-free writing app for Windows. free and open source.
+a calm, distraction-free writing app for Windows & Mac. free and open source.
 
 your words live in plain markdown files on your own disk — no accounts,
 no cloud, no toolbars, no telemetry. just typography and a blinking caret.
@@ -27,14 +27,42 @@ no cloud, no toolbars, no telemetry. just typography and a blinking caret.
 
 ## install
 
-grab the installer from [releases](https://github.com/warmpop/lwriter/releases/latest)
+**windows** — grab the installer from
+[v0.1.0](https://github.com/warmpop/lwriter/releases/tag/v0.1.0)
 (Windows 10/11, 64-bit, per-user, no admin). unsigned for now — SmartScreen
 may ask you to confirm.
+
+**mac** (beta) — grab the `.dmg` from
+[v0.2.0](https://github.com/warmpop/lwriter/releases/tag/v0.2.0)
+(Apple Silicon, macOS 12+). drag lwriter to Applications, then right-click →
+Open the first time — it's unsigned, so Gatekeeper needs that nudge once.
+
+> note: releases are tagged per platform, so use the links above rather than
+> the generic "latest release" page — that tag just points at whichever
+> platform shipped most recently.
+
+### uninstalling / resetting your data
+
+lwriter never touches anything outside two places: your notes, and its own
+settings. removing the app itself doesn't remove either — do that on purpose:
+
+- **your notes** are plain `.md` files and are never deleted by an uninstall —
+  they live in `Documents/lwriter`, plus wherever you've linked a vault.
+  delete that folder yourself if you want them gone.
+- **settings & session** (theme, fonts, window state — no writing) live
+  separately from your notes:
+  - windows: `%LOCALAPPDATA%\app.lwriter`
+  - mac: `~/Library/WebKit/app.lwriter` (and `~/Library/Application Support/app.lwriter`
+    if present) — delete both for a full reset
+- **the app itself**:
+  - windows: *Settings → Apps → installed apps → lwriter → uninstall*
+    (or the portable `.exe`: just delete the file)
+  - mac: drag `lwriter.app` out of Applications to the Trash
 
 ## build it yourself
 
 only Rust required — no Node, no bundler. see [BUILD.md](BUILD.md)
-(includes linux instructions; macOS port is planned).
+(includes linux instructions).
 
 ## docs
 
