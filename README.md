@@ -32,14 +32,14 @@ no cloud, no toolbars, no telemetry. just typography and a blinking caret.
 (Windows 10/11, 64-bit, per-user, no admin). unsigned for now — SmartScreen
 may ask you to confirm.
 
-**mac** (beta) — grab the `.dmg` from
-[v0.2.0](https://github.com/warmpop/lwriter/releases/tag/v0.2.0)
+**mac** (beta, v0.2.1) — grab the `.dmg` from
+[releases](https://github.com/warmpop/lwriter/releases/tag/v0.1.0)
 (Apple Silicon, macOS 12+). drag lwriter to Applications, then right-click →
 Open the first time — it's unsigned, so Gatekeeper needs that nudge once.
 
-> note: releases are tagged per platform, so use the links above rather than
-> the generic "latest release" page — that tag just points at whichever
-> platform shipped most recently.
+> windows and mac builds are versioned independently but published together,
+> so both links above land on the same release page — grab the asset for
+> your platform there.
 
 ### uninstalling / resetting your data
 
