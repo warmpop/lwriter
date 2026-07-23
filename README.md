@@ -35,13 +35,13 @@ no cloud, no toolbars, no telemetry. just typography and a blinking caret.
 - discord rich presence (optional, off by default). an elapsed-time
   clock and a rotating status line, never your document's name or contents
 
-## install
+## install:
 
-premade builds for windows and mac are in the [releases tab](https://github.com/warmpop/lwriter/releases/latest).
+premade builds for windows and mac are in the [releases tab](https://github.com/warmpop/lwriter/releases/latest). (note: the macOS build is several versions behind Windows and is largely untested. please report any issues you may have!)
 
 linux users can build and install it using the instructions in [BUILD.md](BUILD.md).
 
-### uninstalling / resetting your data
+### uninstalling / resetting your data:
 
 lwriter never touches anything outside two places: your notes, and its own
 settings. removing the app itself doesn't remove either, so do that on purpose:
@@ -55,9 +55,7 @@ settings. removing the app itself doesn't remove either, so do that on purpose:
   - mac: ~/Library/WebKit/app.lwriter (and ~/Library/Application Support/app.lwriter
     if present), delete both for a full reset
 
-## report bugs / known issues
-
-if you run into any problems, please [make a big issue](https://github.com/warmpop/lwriter/issues/new) out of it! remember include your OS and lwriter version number in the issue!
+## known issues:
 
 macOS: 
 * CMD+H to hide the program instead opens search+find
@@ -65,8 +63,12 @@ macOS:
   
 *(both issues will be resolved in r1.0)*
 
+### report bugs & give feedback please!
+if you run into any problems, please [make a big issue](https://github.com/warmpop/lwriter/issues/new) out of it! remember include your OS and lwriter version number in the issue! - feel free to also use the issues tab for suggestions! all thoughts are appreciated. 
 
-## license
+## license:
 
-[MIT](LICENSE). bundled fonts (jetbrains mono, ia writer quattro s) are under
-the sil open font license, see ui/fonts/.
+[MIT](LICENSE) - 
+all bundled fonts (JetBrains Mono, iA Writer Quattro S) are used under the SIL Open Font License.
+
+this project was heavily inspired & influenced by [write0](https://write.omarbadri.dev/) & [iA Writer](https://ia.net/writer) - special thanks to both pieces of software. give write0 a try if you're looking for a good focused web app alternative.
