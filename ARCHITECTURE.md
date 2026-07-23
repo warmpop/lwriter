@@ -58,6 +58,13 @@ invoke('import_image', ...)    →  #[tauri::command] fn import_image(dir, src_p
                                  → copies a dropped image file next to the note
 invoke('read_image', ...)      →  #[tauri::command] fn read_image(path)
                                  → image file as a data: URI for the preview pane
+invoke('discord_set_enabled', ..)→ #[tauri::command] fn discord_set_enabled(enabled)
+                                 → src-tauri/src/discord.rs; turns the background
+                                   Discord IPC connection on/off
+invoke('discord_session_start') →  #[tauri::command] fn discord_session_start()
+                                 → resets the Rich Presence elapsed-time clock and
+                                   flavor line; called from loadDocument() — carries
+                                   no filename, path, or content
 ```
 
 - File I/O is Rust-side only (no filesystem access from JS).

@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
+mod discord;
+
 const TXT_EXTENSIONS: &[&str] = &["txt", "md", "markdown", "text"];
 
 const GUIDE_NAME: &str = "lwriter guide.md";
@@ -715,7 +717,13 @@ fn start_dragging(window: tauri::Window) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            discord::init(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
+            discord::discord_set_enabled,
+            discord::discord_session_start,
             open_file_dialog,
             save_file_dialog,
             open_folder_dialog,

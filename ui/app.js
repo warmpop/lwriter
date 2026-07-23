@@ -86,6 +86,7 @@ const state = {
   customWidth: null,       // rem number, overrides editorWidth preset when set
   spellcheck: true,
   chromeAutoHide: true,
+  discordPresence: false, // opt-in — the one setting that talks to a third party
   typewriterMode: false,
   focusMode: false,
   previewMode: false,
@@ -134,6 +135,8 @@ function init() {
   applySpellcheck();
   applyModes();
   applySidebar();
+  invoke('discord_set_enabled', { enabled: state.discordPresence }).catch(() => {});
+  setupDiscordStatus();
   setupEditorEvents();
   setupWindowControls();
   setupSidebar();
@@ -149,6 +152,7 @@ function init() {
   updateTitlebar();
 
   restoreSession();
+  invoke('discord_session_start').catch(() => {}); // fresh elapsed-time clock for this launch
 
   // Clicking the empty margins focuses the editor
   dom.editorArea.addEventListener('click', (e) => {
@@ -180,6 +184,7 @@ function loadSettings() {
       if (s.editorFont === 'custom' && state.customFont) state.editorFont = 'custom';
       if (s.spellcheck !== undefined) state.spellcheck = s.spellcheck;
       if (s.chromeAutoHide !== undefined) state.chromeAutoHide = s.chromeAutoHide;
+      if (s.discordPresence !== undefined) state.discordPresence = !!s.discordPresence;
       if (s.typewriterMode !== undefined) state.typewriterMode = s.typewriterMode;
       if (s.focusMode !== undefined) state.focusMode = s.focusMode;
       if (s.sidebarVisible !== undefined) state.sidebarVisible = s.sidebarVisible;
@@ -206,6 +211,7 @@ function saveSettings() {
     customWidth: state.customWidth,
     spellcheck: state.spellcheck,
     chromeAutoHide: state.chromeAutoHide,
+    discordPresence: state.discordPresence,
     typewriterMode: state.typewriterMode,
     focusMode: state.focusMode,
     sidebarVisible: state.sidebarVisible,
@@ -811,6 +817,24 @@ function toast(message) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
+/* ---------- Discord presence status ----------
+   The Rust side emits a `discord-status` event on connect/wait so the
+   toggle gives real feedback instead of failing silently. */
+function setupDiscordStatus() {
+  const listen = window.__TAURI__?.event?.listen;
+  if (!listen) return;
+  const messages = {
+    connected: 'discord: connected',
+    waiting: 'discord: waiting for discord to open…',
+  };
+  listen('discord-status', (e) => {
+    const msg = messages[e.payload];
+    // Only speak up while the feature is on (avoids a stray toast if a
+    // late "waiting" arrives right after the user turned it off)
+    if (msg && state.discordPresence) toast(msg);
+  }).catch(() => {});
+}
+
 /* ---------- Sidebar context menu ---------- */
 let ctxMenuEl = null;
 
@@ -1170,6 +1194,13 @@ function setupSettings() {
   $('#btn-open-notes-dir').addEventListener('click', () => {
     invoke('open_notes_dir').catch((e) => console.error('Failed to open notes folder:', e));
   });
+  $('#set-discord').addEventListener('click', () => {
+    state.discordPresence = !state.discordPresence;
+    invoke('discord_set_enabled', { enabled: state.discordPresence }).catch(() => {});
+    if (!state.discordPresence) toast('discord presence off');
+    saveSettings();
+    syncSettingsUI();
+  });
 
   // Advanced disclosure
   $('#advanced-toggle').addEventListener('click', () => {
@@ -1253,6 +1284,7 @@ function syncSettingsUI() {
   setToggle('#set-focus', state.focusMode);
   setToggle('#set-spellcheck', state.spellcheck);
   setToggle('#set-autohide', state.chromeAutoHide);
+  setToggle('#set-discord', state.discordPresence);
 
   // Advanced
   $('#custom-font-name').textContent = state.customFont ? state.customFont.name : '';
@@ -1531,6 +1563,9 @@ function loadDocument(path, contents) {
   dom.editorArea.scrollTop = 0;
   dom.editor.focus();
   scheduleChromeHide(); // fresh document = ready to write, chrome fades
+  // A different document is now active: reset the Discord elapsed-time
+  // clock and roll a new flavor line. Carries no filename or contents.
+  invoke('discord_session_start').catch(() => {});
   if (state.sidebarVisible) refreshNotes();
 }
 

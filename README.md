@@ -5,6 +5,14 @@ a calm, distraction-free writing app for Windows & Mac. free and open source.
 your words live in plain markdown files on your own disk — no accounts,
 no cloud, no toolbars, no telemetry. just typography and a blinking caret.
 
+<p align="center">
+  <a href="https://github.com/warmpop/lwriter/releases/download/v0.3.0/lwriter_0.3.0_x64-setup.exe"><img alt="Download for Windows" src="https://img.shields.io/badge/windows-download-FFECB8?style=for-the-badge&logo=windows&logoColor=FFECB8&labelColor=2c2410"></a>
+  &nbsp;
+  <a href="https://github.com/warmpop/lwriter/releases/download/v0.3.0/lwriter_0.2.1_aarch64.dmg"><img alt="Download for macOS" src="https://img.shields.io/badge/macOS-download-FFECB8?style=for-the-badge&logo=apple&logoColor=FFECB8&labelColor=2c2410"></a>
+  &nbsp;
+  <a href="BUILD.md"><img alt="Build for Linux" src="https://img.shields.io/badge/linux-build%20from%20source-FFECB8?style=for-the-badge&logo=linux&logoColor=FFECB8&labelColor=2c2410"></a>
+</p>
+
 ## what it does
 
 - **markdown, styled live** — headings, bold, italic, code and quotes take
@@ -24,22 +32,24 @@ no cloud, no toolbars, no telemetry. just typography and a blinking caret.
 - **your type** — JetBrains Mono & iA Writer Quattro bundled, any installed
   or custom font loadable
 - **small** — native Rust (Tauri 2), ~2 MB installer, no Electron
+- **discord rich presence** (optional, off by default) — an elapsed-time
+  clock and a rotating status line; never your document's name or contents
 
 ## install
 
-**windows** — grab the installer from
-[v0.1.0](https://github.com/warmpop/lwriter/releases/tag/v0.1.0)
-(Windows 10/11, 64-bit, per-user, no admin). unsigned for now — SmartScreen
-may ask you to confirm.
+the buttons above download directly. the
+[latest release](https://github.com/warmpop/lwriter/releases/latest) has
+every build in one place.
 
-**mac** (beta, v0.2.1) — grab the `.dmg` from
-[releases](https://github.com/warmpop/lwriter/releases/tag/v0.1.0)
-(Apple Silicon, macOS 12+). drag lwriter to Applications, then right-click →
-Open the first time — it's unsigned, so Gatekeeper needs that nudge once.
+**windows** (v0.3.0) — run the installer (Windows 10/11, 64-bit, per-user,
+no admin). unsigned for now — SmartScreen may ask you to confirm.
 
-> windows and mac builds are versioned independently but published together,
-> so both links above land on the same release page — grab the asset for
-> your platform there.
+**mac** (beta, v0.2.1) — open the `.dmg` and drag lwriter to Applications
+(Apple Silicon, macOS 12+). unsigned, so the first launch needs
+right-click → Open to get past Gatekeeper. the mac build isn't actively
+updated right now, so it trails the Windows version.
+
+**linux** — [build from source](BUILD.md); only Rust is required.
 
 ### uninstalling / resetting your data
 

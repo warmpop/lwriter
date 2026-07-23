@@ -6,12 +6,13 @@
 
 ## Current status
 
-**Phase:** 5 (macOS port) shipped as v0.2.1 (v0.2.0 was pulled — see below).
-Windows build still shippable, unaffected.
-Next: visual pass on-device (traffic lights, chrome padding, theme
+**Phase:** Windows shipped as **v0.3.0** (adds Discord Rich Presence).
+macOS port shipped as v0.2.1 (v0.2.0 was pulled — see Phase 5). mac isn't
+being actively updated; the 0.2.1 .dmg carries forward into later releases.
+Next: visual pass on-device for mac (traffic lights, chrome padding, theme
 live-follow, font metrics in WKWebView).
-**Last updated:** 2026-07-21 (v0.2.0 unsigned .app was rejected by Gatekeeper
-as "damaged"; v0.2.1 ad-hoc signs the bundle — see Phase 5 notes)
+**Last updated:** 2026-07-22 (Discord Rich Presence, verified working on
+Windows; released as v0.3.0)
 
 ## Quick orientation
 
@@ -368,6 +369,43 @@ if it keeps growing. Not doing a risky refactor before the macOS port.
   Ad-hoc signing fixes the "damaged" error but Gatekeeper still shows an
   "unidentified developer" prompt on first launch (right-click → Open).
 - [ ] GitHub Actions macOS runner for CI builds (built locally for now).
+
+### Discord Rich Presence (2026-07-21)
+- [x] Optional, **off by default** — the one integration that talks to a
+  third party, so it doesn't inherit the app's silent-by-default posture.
+  Toggle at Settings → integrations. New Rust module `discord.rs`
+  (`discord-rich-presence` crate) owns a background thread holding the IPC
+  connection to the local Discord client; reconnects quietly on a 3s tick
+  if Discord isn't running yet or closes mid-session — same pattern every
+  other Rich Presence integration (Spotify, VS Code, games) uses.
+- [x] Shows: a rotating "cute" flavor line (`writing` / random pick from a
+  ~12-line list — "in the writing cave", "chasing a good sentence", etc.),
+  an elapsed-time clock via Discord's own `timestamps.start` rendering (we
+  never format a timer ourselves), and the lwriter mark, which is itself
+  the clickable link to lwriter.lyn.quest (Discord's `large_url` on the
+  asset — a subtle clickable icon rather than a full button; the button
+  form was tried first and dropped, see below). **Never sends the
+  document's name, path, or contents** — the only signal crossing the
+  bridge is "a document became active just now" (`discord_session_start`,
+  fired from `loadDocument()`, which already covers new/open/switch/
+  drag-drop in one place) and the enabled/disabled bit.
+- [x] New commands: `discord_set_enabled(bool)`, `discord_session_start()`
+  (no args, no return). Both fire-and-forget from the frontend. The Rust
+  side also emits a `discord-status` event (`connected` / `waiting`) that
+  the frontend toasts, so the toggle confirms it actually connected instead
+  of failing silently. Needs `core:event:default` in the capability.
+- [x] Application ID `1243651433606287380` (warmpop's Discord app) baked
+  into `CLIENT_ID`; art asset uploaded under key `logo`. **Verified working
+  on Windows 2026-07-22** — presence, elapsed clock, flavor line, and
+  clickable icon all render.
+- [x] Button → clickable-icon change (2026-07-22): the first cut used
+  `buttons` (a "download lwriter" button). That silently broke the *entire*
+  activity — a rejected/finicky button payload makes Discord discard the
+  whole SET_ACTIVITY, so nothing showed. Switched to `large_url` (clickable
+  large image), which is both what the user wanted (subtle) and the fix.
+  Gotchas confirmed against the crate source, not its docs:
+  `Timestamps::start` takes **milliseconds**, `DiscordIpcClient::new`
+  returns `Self` not `Result` in v1.1.0.
 
 **Verification note (2026-07-12):** dark/light live theme switching, Quattro rendering, and
 chrome fade were verified on-screen. The sidebar + font menu build & parse clean but the

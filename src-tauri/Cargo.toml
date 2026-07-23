@@ -1,6 +1,6 @@
 [package]
 name = "lwriter"
-version = "0.2.1"
+version = "0.3.0"
 description = "A calm, FOSS writing app"
 edition = "2021"
 license = "MIT"
@@ -15,6 +15,7 @@ serde_json = "1"
 rfd = "0.15"
 trash = "5"
 base64 = "0.22"
+discord-rich-presence = "1.1.0"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
