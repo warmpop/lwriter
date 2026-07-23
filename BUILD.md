@@ -13,21 +13,6 @@ need is Rust.
 cargo install tauri-cli --locked
 ```
 
-## windows
-
-nothing else to install — WebView2 ships with Windows 10/11.
-
-```sh
-git clone https://github.com/warmpop/lwriter
-cd lwriter
-cargo tauri build
-```
-
-artifacts:
-
-- portable exe → `src-tauri/target/release/lwriter.exe`
-- installer → `src-tauri/target/release/bundle/nsis/lwriter_x.y.z_x64-setup.exe`
-
 ## linux
 
 install the system libraries Tauri needs first.
@@ -76,11 +61,21 @@ cargo tauri build --no-bundle
 > now (e.g. "show in explorer" invokes `explorer.exe`). issues and PRs for
 > linux polish are very welcome.
 
-## macos
+## windows
 
-not yet — the port is planned (native traffic lights, Cmd-key shortcuts,
-a proper .dmg) and tracked in `PROGRESS.md`. the codebase compiles on macOS
-in principle, but it hasn't been run or tested there. watch the releases page.
+nothing else to install — WebView2 ships with Windows 10/11.
+
+```sh
+git clone https://github.com/warmpop/lwriter
+cd lwriter
+cargo tauri build
+```
+
+artifacts:
+
+- portable exe → `src-tauri/target/release/lwriter.exe`
+- installer → `src-tauri/target/release/bundle/nsis/lwriter_x.y.z_x64-setup.exe`
+
 
 ## developing
 
