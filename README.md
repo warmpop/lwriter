@@ -55,6 +55,17 @@ settings. removing the app itself doesn't remove either, so do that on purpose:
   - mac: ~/Library/WebKit/app.lwriter (and ~/Library/Application Support/app.lwriter
     if present), delete both for a full reset
 
+## report bugs / known issues
+
+if you run into any problems, please [make a big issue](https://github.com/warmpop/lwriter/issues/new) out of it! remember include your OS and lwriter version number in the issue!
+
+macOS: 
+* CMD+H to hide the program instead opens search+find
+* topbar elements not ligning up with traffic lights & other visual inconsistencies
+  
+*(both issues will be resolved in r1.0)*
+
+
 ## license
 
 [MIT](LICENSE). bundled fonts (jetbrains mono, ia writer quattro s) are under
