@@ -6,11 +6,11 @@ your words live in plain markdown files on your own disk. no accounts,
 no cloud, no toolbars, no telemetry. just typography and a blinking caret.
 
 <p align="center">
-  <a href="https://github.com/warmpop/lwriter/releases/download/v0.3.0/lwriter_0.3.0_x64-setup.exe"><img alt="Download for Windows" src="https://img.shields.io/badge/windows-download-FFECB8?style=for-the-badge&logo=windows&logoColor=FFECB8&labelColor=2c2410"></a>
+  <a href="https://github.com/warmpop/lwriter/releases/download/a0.3/lwriter_a0.3-setup-x64.exe"><img alt="Download for Windows" src="https://img.shields.io/badge/windows-download-FFECB8?style=for-the-badge&logo=windows&logoColor=FFECB8&labelColor=2c2410"></a>
   &nbsp;
-  <a href="https://github.com/warmpop/lwriter/releases/download/v0.3.0/lwriter_0.2.1_aarch64.dmg"><img alt="Download for macOS" src="https://img.shields.io/badge/macOS-download-FFECB8?style=for-the-badge&logo=apple&logoColor=FFECB8&labelColor=2c2410"></a>
+  <a href="https://github.com/warmpop/lwriter/releases/download/a0.3/lwriter_a0.2-silicon.dmg"><img alt="Download for macOS" src="https://img.shields.io/badge/macOS-download-FFECB8?style=for-the-badge&logo=apple&logoColor=FFECB8&labelColor=2c2410"></a>
   &nbsp;
-  <a href="BUILD.md"><img alt="Build for Linux" src="https://img.shields.io/badge/linux-build%20from%20source-FFECB8?style=for-the-badge&logo=linux&logoColor=FFECB8&labelColor=2c2410"></a>
+  <a href="BUILD.md"><img alt="Linux (Untested)" src="https://img.shields.io/badge/linux-build%20from%20source-FFECB8?style=for-the-badge&logo=linux&logoColor=FFECB8&labelColor=2c2410"></a>
 </p>
 
 ## what it does
